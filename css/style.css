@@ -1,0 +1,206 @@
+/* ==========================================
+   早哦早餐铺
+   ========================================== */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Microsoft YaHei", "Hiragino Sans GB", "Helvetica Neue", sans-serif;
+  background: #F8FAFC;
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ==========================================
+   Hero：居中
+   ========================================== */
+.hero {
+  text-align: center;
+  padding: 64px 24px 48px;
+}
+
+.hero-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 20px;
+}
+
+.hero-name {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+  color: #0f172a;
+}
+
+.hero-tagline {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 28px;
+}
+
+.hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.hero-btn {
+  display: inline-block;
+  padding: 12px 28px;
+  border-radius: 40px;
+  background: #FFB7B2;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 2px 12px rgba(255, 183, 178, 0.35);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.hero-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 183, 178, 0.5);
+  background: #ffa49e;
+}
+
+/* ==========================================
+   三列卡片
+   ========================================== */
+.columns {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  padding: 0 24px 48px;
+}
+
+.column {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.column:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.08);
+}
+
+.column-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.column-desc  { font-size: 13px; color: #94a3b8; margin-bottom: 20px; }
+
+.column-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex: 1;
+}
+
+.inner-card {
+  background: #F8FAFC;
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  transition: background 0.2s;
+}
+.inner-card:hover { background: #f1f5f9; }
+
+.inner-thumb { font-size: 28px; margin-bottom: 6px; }
+.inner-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.inner-sub   { font-size: 12px; color: #94a3b8; }
+
+.column-more {
+  display: inline-block;
+  font-size: 13px;
+  color: #FFB7B2;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+  align-self: flex-start;
+}
+.column-more:hover { color: #ffa49e; }
+
+.column-more.disabled {
+  color: #cbd5e1;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ==========================================
+   底部
+   ========================================== */
+.footer {
+  text-align: center;
+  padding: 8px 24px 40px;
+}
+
+.footer .email {
+  font-size: 14px;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.2s;
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 8px;
+}
+.footer .email:hover {
+  color: #FFB7B2;
+  background: rgba(255, 183, 178, 0.08);
+}
+
+.footer-note {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* ==========================================
+   Toast
+   ========================================== */
+.toast {
+  position: fixed;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #334155;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================
+   响应式
+   ========================================== */
+@media (max-width: 768px) {
+  .hero { padding: 48px 20px 36px; }
+  .hero-name { font-size: 28px; }
+
+  .columns {
+    grid-template-columns: 1fr;
+    max-width: 460px;
+    gap: 16px;
+    padding: 0 20px 48px;
+  }
+}
