@@ -569,10 +569,10 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
   <div class="music-layout">
     <!-- 左栏：上传 + 歌单 -->
     <div class="music-left">
-      <div class="playlist-select-row owner-only-el" style="display:none;">
+      <div class="playlist-select-row">
         <select id="playlist-select" class="playlist-select"></select>
-        <button id="playlist-new" class="playlist-new-btn" title="新建歌单">＋</button>
-        <button id="playlist-del" class="playlist-new-btn" title="删除歌单" style="color:#e55;">✕</button>
+        <button id="playlist-new" class="playlist-new-btn owner-only-el" title="新建歌单" style="display:none;">＋</button>
+        <button id="playlist-del" class="playlist-new-btn owner-only-el" title="删除歌单" style="display:none;color:#e55;">✕</button>
       </div>
       <label class="music-upload-btn owner-only-el" title="上传 MP3 文件" style="display:none;">📂 上传音乐<input type="file" accept="audio/mp3,audio/mpeg,.mp3" id="song-upload-input" style="display:none" multiple></label>
       <div class="playlist-panel">
@@ -609,7 +609,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
             <input type="range" id="volume-slider" min="0" max="100" value="80" class="volume-slider">
           </span>
         </div>
-        <audio id="audio" style="display:none"></audio>
+        <audio id="audio" style="display:none" crossorigin="anonymous"></audio>
       </div>
       <div class="player-panel playlist-comments-panel" id="playlist-comments">
         <h3 style="font-size:14px;margin-bottom:10px;">💬 歌单讨论</h3>
@@ -937,14 +937,53 @@ const LS = {
   set(k,v){ try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;} }
 };
 
+// Supabase Storage
+async function sbUpload(bucket, path, blob) {
+  const r = await fetch(`${SB_URL}/storage/v1/object/${bucket}/${path}`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true' },
+    body: blob
+  });
+  if (!r.ok) { const t = await r.text(); throw new Error(t.slice(0,80)); }
+  return `${SB_URL}/storage/v1/object/public/${bucket}/${path}`;
+}
+async function sbListObjects(bucket) {
+  const r = await fetch(`${SB_URL}/storage/v1/object/list/${bucket}`, {
+    method: 'POST', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prefix: '', limit: 100, offset: 0 })
+  });
+  if (!r.ok) { console.error('list failed', bucket, r.status, await r.text()); return []; }
+  return await r.json();
+}
+async function sbDeleteStorage(bucket, path) {
+  const h = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+  await fetch(`${SB_URL}/storage/v1/object/${bucket}/${path}`, { method: 'DELETE', headers: h });
+}
 
 // 示例项目
-const defaultProjects = [
-  { id:1, title:'个人网站', desc:'这个博客网站的搭建过程，从设计到实现。', tags:['HTML','CSS','JavaScript'], content:'# 个人网站\n\n这是我的个人博客项目。\n\n## 技术栈\n- HTML5\n- CSS3 (Grid, Flexbox, Custom Properties)\n- 原生 JavaScript\n\n## 特性\n- 单页应用，无刷新切换\n- 夜间模式\n- 壁纸上传\n- localStorage 持久化\n\n```js\nconsole.log("Hello!");\n```' },
-  { id:2, title:'B站视频剪辑', desc:'游戏日常与创作内容的视频作品。', tags:['剪辑','创作'], content:'# B站视频\n\n这里是我的视频作品集合。\n\n访问 [B站空间](https://space.bilibili.com/290045180) 查看全部。' },
-  { id:3, title:'小游戏开发', desc:'用 Web 技术开发的小游戏合集。', tags:['游戏','Web'], content:'# 小游戏\n\n正在开发中，敬请期待。' },
-];
-let projects = LS.get('projects', defaultProjects);
+let projects = [];
+async function loadProjects() {
+  try {
+    const data = await _fetch('GET', 'projects', { order: 'created_at.desc' });
+    projects = (data || []).map(p => {
+      if (typeof p.tags === 'string') p.tags = p.tags ? p.tags.split(',').map(t=>t.trim()) : [];
+      if (!p.desc && p["desc"]) p.desc = p["desc"];
+      return p;
+    });
+  } catch(e) { projects = []; }
+}
+async function saveProject(p) {
+  const toSave = { ...p };
+  if (Array.isArray(toSave.tags)) toSave.tags = toSave.tags.join(',');
+  if (toSave.id) await _fetch('DELETE', 'projects', { id: 'eq.' + toSave.id });
+  delete toSave.id;
+  const r = await fetch(SB_URL + '/rest/v1/projects', {
+    method: 'POST', headers: { ...sbHeaders(), Prefer: 'return=representation' }, body: JSON.stringify(toSave)
+  });
+  if (r.ok) return r.json();
+  return null;
+}
+async function deleteProjectSB(id) { await _fetch('DELETE', 'projects', { id: 'eq.' + id }); }
 
 // ==========================================
 // 导航 & 页面切换
@@ -1084,28 +1123,21 @@ wpOverlay.addEventListener('click', closePanel);
 // ---- 渲染面板缩略图 ----
 async function renderPanel() {
   // 清理旧缩略图 URL
-  wpThumbUrls.forEach(u => URL.revokeObjectURL(u));
   wpThumbUrls = [];
-  wpRecords = await idbGetAll('wallpapers');
+  const d2 = await sbListObjects('wallpapers');
+  wpRecords = (d2 || []).filter(f => !f.name.startsWith('.')).map(f => ({ id: f.name, name: f.name, time: new Date(f.created_at).getTime(), url: SB_URL + '/storage/v1/object/public/wallpapers/' + f.name }));
   wpRecords.sort((a, b) => b.time - a.time);
-
   const activeId = LS.get('activeWpId', null);
   wpGrid.innerHTML = wpRecords.map(r => {
-    const url = URL.createObjectURL(r.blob);
-    wpThumbUrls.push(url);
     const isActive = r.id === activeId;
-    return `<div class="wp-item${isActive ? ' active' : ''}" data-id="${r.id}">
-      <img src="${url}" alt="">
-      <span class="wp-check">✅</span>
-      ${isOwner ? '<button class="wp-del" data-del="'+r.id+'">✕</button>' : ''}
-    </div>`;
+    return '<div class="wp-item' + (isActive ? ' active' : '') + '" data-id="' + r.id + '"><img src="' + r.url + '" alt=""><span class="wp-check">✅</span>' + (isOwner ? '<button class="wp-del" data-del="' + r.id + '">✕</button>' : '') + '</div>';
   }).join('') || '<div style="grid-column:1/-1;font-size:12px;color:var(--text-muted);text-align:center;padding:24px;">还没有壁纸</div>';
 
   // 点击缩略图 → 应用壁纸
   wpGrid.querySelectorAll('.wp-item').forEach(el => {
     el.addEventListener('click', e => {
       if (e.target.classList.contains('wp-del')) return;
-      const id = +el.dataset.id;
+      const id = el.dataset.id;
       applyWallpaper(id);
       closePanel();
     });
@@ -1115,7 +1147,7 @@ async function renderPanel() {
     wpGrid.querySelectorAll('.wp-del').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
-        deleteWallpaper(+btn.dataset.del);
+        deleteWallpaper(btn.dataset.del);
       });
     });
   }
@@ -1125,10 +1157,8 @@ async function renderPanel() {
 async function applyWallpaper(id) {
   const record = wpRecords.find(r => r.id === id);
   if (!record) return;
-  if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
-  wallpaperBlob = record.blob;
-  wallpaperUrl = URL.createObjectURL(wallpaperBlob);
-  document.body.style.backgroundImage = `url(${wallpaperUrl})`;
+  wallpaperUrl = record.url;
+  document.body.style.backgroundImage = 'url(' + wallpaperUrl + ')';
   document.body.classList.add('has-wallpaper');
   LS.set('activeWpId', id);
 }
@@ -1137,20 +1167,14 @@ async function applyWallpaper(id) {
 async function loadWallpaper() {
   const activeId = LS.get('activeWpId', null);
   if (activeId === null) return;
-  const record = await idbGet('wallpapers', activeId);
-  if (record && record.blob) {
-    wallpaperBlob = record.blob;
-    wallpaperUrl = URL.createObjectURL(wallpaperBlob);
-    document.body.style.backgroundImage = `url(${wallpaperUrl})`;
-    document.body.classList.add('has-wallpaper');
-  } else {
-    LS.set('activeWpId', null);
-  }
+  wallpaperUrl = SB_URL + '/storage/v1/object/public/wallpapers/' + activeId;
+  document.body.style.backgroundImage = 'url(' + wallpaperUrl + ')';
+  document.body.classList.add('has-wallpaper');
 }
 
 // ---- 删除壁纸 ----
 async function deleteWallpaper(id) {
-  await idbDelete('wallpapers', id);
+  await sbDeleteStorage('wallpapers', id);
   if (LS.get('activeWpId') === id) {
     if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
     wallpaperUrl = null; wallpaperBlob = null;
@@ -1168,8 +1192,9 @@ wpUpload.addEventListener('change', async e => {
     if (!f.type.startsWith('image/')) continue;
     try {
       const blob = await compressBlob(f);
-      await idbPut('wallpapers', { blob, time: Date.now() });
-    } catch (err) { toast('⚠️ 上传失败'); }
+      const path = 'wp_' + Date.now() + '.jpg';
+      await sbUpload('wallpapers', path, blob);
+    } catch (err) { toast('⚠️ 壁纸上传失败: ' + (err.message || '请检查Supabase Storage权限')); }
   }
   e.target.value = '';
   renderPanel();
@@ -1214,7 +1239,7 @@ wpClear.addEventListener('click', () => {
 function updateStats() {
   document.getElementById('stat-projects').textContent = projects.length;
   document.getElementById('stat-photos').textContent = photoRecords.length;
-  document.getElementById('stat-notes').textContent = LS.get('notes', []).length;
+  document.getElementById('stat-notes').textContent = notes.length;
 }
 
 // ==========================================
@@ -1235,7 +1260,7 @@ function _renderProjectGrid(list) {
     <div class="project-card" data-id="${p.id}">
       ${isOwner?'<button class="proj-edit" data-eid="'+p.id+'">✏️</button><button class="proj-del" data-did="'+p.id+'">✕</button>':''}
       <h3>${escHtml(p.title)}</h3>
-      <p>${escHtml(p.desc)}</p>
+      <p>${escHtml(p.desc||p["desc"]||'')}</p>
       <div class="project-tags">${(p.tags||[]).map(t=>`<span class="project-tag">${escHtml(t)}</span>`).join('')}</div>
     </div>`).join('') || '<p style="color:var(--text-muted);font-size:14px;">没有匹配的项目</p>';
   grid.querySelectorAll('.project-card').forEach(c => {
@@ -1249,52 +1274,52 @@ function _renderProjectGrid(list) {
     grid.querySelectorAll('.proj-del').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();deleteProject(+b.dataset.did);}));
   }
 }
-function editProject(id){
+async function editProject(id){
   const p=projects.find(x=>x.id===id);if(!p)return;
   const card=document.querySelector(`.project-card[data-id="${id}"]`);if(!card)return;
   card.innerHTML=`
     <div style="display:flex;flex-direction:column;gap:6px;">
       <input id="pe-title" value="${escHtml(p.title)}" style="font-size:16px;font-weight:600;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
-      <input id="pe-desc" value="${escHtml(p.desc)}" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
+      <input id="pe-desc" value="${escHtml(p["desc"]||p.desc||'')}" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
       <input id="pe-tags" value="${(p.tags||[]).join(',')}" placeholder="标签（逗号分隔）" style="font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
       <div style="display:flex;gap:6px;">
         <button id="pe-save" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">保存</button>
         <button id="pe-cancel" style="padding:6px 14px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:12px;color:var(--text);">取消</button>
       </div>
     </div>`;
-  document.getElementById('pe-save').addEventListener('click',()=>{
+  document.getElementById('pe-save').addEventListener('click',async()=>{
     p.title=document.getElementById('pe-title').value.trim()||p.title;
-    p.desc=document.getElementById('pe-desc').value.trim()||p.desc;
+    p["desc"]=document.getElementById('pe-desc').value.trim()||'';
     p.tags=document.getElementById('pe-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
-    LS.set('projects',projects);renderProjects();
+    await saveProject(p); await loadProjects(); renderProjects();
   });
   document.getElementById('pe-cancel').addEventListener('click',()=>renderProjects());
 }
-function deleteProject(id){
+async function deleteProject(id){
   if(!confirm('确定删除？'))return;
-  projects=projects.filter(p=>p.id!==id);LS.set('projects',projects);renderProjects();
+  await deleteProjectSB(id); await loadProjects(); renderProjects();
 }
 // 新建项目
-document.getElementById('project-add-btn').addEventListener('click',()=>{
+document.getElementById('project-add-btn').addEventListener('click',async()=>{
   const title=prompt('项目名称：');if(!title||!title.trim())return;
-  projects.unshift({id:Date.now(),title:title.trim(),desc:'',tags:[],content:''});
-  LS.set('projects',projects);renderProjects();
+  await saveProject({title:title.trim(),"desc":'',tags:[],content:'',created_at:new Date().toISOString()});
+  await loadProjects();renderProjects();
 });
 // MD 上传
-document.getElementById('project-md-input').addEventListener('change',e=>{
+document.getElementById('project-md-input').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
   const reader=new FileReader();
-  reader.onload=()=>{
+  reader.onload=async()=>{
     const name=f.name.replace(/\.(md|markdown)$/i,'');
-    projects.unshift({id:Date.now(),title:name,desc:'',tags:[],content:reader.result});
-    LS.set('projects',projects);renderProjects();toast('✅ 已导入：'+name);
+    await saveProject({title:name,"desc":'',tags:[],content:reader.result,created_at:new Date().toISOString()});
+    await loadProjects();renderProjects();toast('✅ 已导入：'+name);
   };
   reader.readAsText(f);
   e.target.value='';
 });
 function showProjectDetail(id) {
   const p = projects.find(x => x.id === id); if (!p) return;
-  document.getElementById('project-grid').style.display = 'none';
+  if (!p.desc && p["desc"]) p.desc = p["desc"];
   document.getElementById('project-search').parentElement.style.display = 'none';
   document.getElementById('project-detail').classList.add('active');
   const editBtn = isOwner ? '<button class="project-add-btn" id="proj-detail-edit" style="margin-bottom:8px;">✏️ 编辑内容</button>' : '';
@@ -1303,7 +1328,7 @@ function showProjectDetail(id) {
     const el=document.getElementById('project-content');
     const orig=el.innerHTML;
     el.innerHTML='<textarea id="pe-content-ta" style="width:100%;min-height:300px;padding:12px;border:1px solid var(--border);border-radius:4px;font-size:14px;font-family:monospace;background:var(--surface);color:var(--text);resize:vertical;">'+escHtml(p.content||'')+'</textarea><div style="margin-top:8px;display:flex;gap:6px;"><button id="pe-content-save" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">保存</button><button id="pe-content-cancel" style="padding:6px 14px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);">取消</button></div>';
-    document.getElementById('pe-content-save').addEventListener('click',()=>{p.content=document.getElementById('pe-content-ta').value;LS.set('projects',projects);showProjectDetail(id);});
+    document.getElementById('pe-content-save').addEventListener('click',async()=>{p.content=document.getElementById('pe-content-ta').value;await saveProject(p);await loadProjects();showProjectDetail(id);});
     document.getElementById('pe-content-cancel').addEventListener('click',()=>{el.innerHTML=orig;});
   });
 }
@@ -1345,34 +1370,15 @@ function setPlayIcon(p) { playIcon.src = p ? PAUSE_ICON_SRC : PLAY_ICON_SRC; }
 
 async function loadPlaylists() {
   try {
-    const records = await idbGetAll('playlists');
-    records.sort((a, b) => a.time - b.time);
-    if (!records.length) {
-      await idbPut('playlists', { name: '我的歌单', time: Date.now() });
-      const r2 = await idbGetAll('playlists'); r2.sort((a, b) => a.time - b.time);
-      playlists = r2;
-    } else { playlists = records; }
-  } catch(e) {
-    if (e.name === 'NotFoundError') {
-      // 表不存在：关闭旧DB，用更高版本号触发升级（不删数据）
-      idb.close();
-      await new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VER + 1);
-        req.onupgradeneeded = ev => {
-          const db = ev.target.result;
-          if (!db.objectStoreNames.contains('playlists')) db.createObjectStore('playlists', { keyPath: 'id', autoIncrement: true });
-        };
-        req.onsuccess = ev => { idb = ev.target.result; resolve(); };
-        req.onerror = () => reject(req.error);
-        req.onblocked = () => { toast('⚠️ 请关闭其他标签页后刷新'); reject(new Error('blocked')); };
-      });
-      DB_VER++; // 更新当前版本号
-      await idbPut('playlists', { name: '我的歌单', time: Date.now() });
-      const r2 = await idbGetAll('playlists'); r2.sort((a, b) => a.time - b.time);
-      playlists = r2;
-    } else { throw e; }
-  }
-  currentPlaylistId = playlists[0].id;
+    const data = await _fetch('GET', 'playlists', { order: 'created_at.asc' });
+    playlists = (data && data.length) ? data : [];
+    if (!playlists.length) {
+      await _fetch('POST', 'playlists', null, { name: '我的歌单', created_at: new Date().toISOString() });
+      const d2 = await _fetch('GET', 'playlists', { order: 'created_at.asc' });
+      playlists = d2 || [];
+    } else { playlists = data; }
+  } catch(e) { playlists = [{ id: 1, name: '我的歌单' }]; }
+  currentPlaylistId = playlists[0]?.id || 0;
   renderPlaylistSelector();
 }
 
@@ -1383,14 +1389,16 @@ function renderPlaylistSelector() {
 }
 
 async function loadSongs() {
-  const records = await idbGetAll('songs');
-  records.sort((a, b) => a.time - b.time);
-  // 过滤当前歌单
-  const filtered = records.filter(r => (r.playlistId || playlists[0]?.id) === currentPlaylistId);
-  // 清理旧 URL
   songUrls.forEach(u => URL.revokeObjectURL(u));
-  songs = filtered;
-  songUrls = filtered.map(r => URL.createObjectURL(r.blob));
+  songs = []; songUrls = [];
+  try {
+    const data = await _fetch('GET', 'songs', { playlist_id: 'eq.' + currentPlaylistId, order: 'created_at.asc' });
+    songs = data || [];
+    for (const s of songs) {
+      const url = SB_URL + '/storage/v1/object/public/songs/' + s.file_path;
+      songUrls.push(url);
+    }
+  } catch(e) {}
   if (currentTrackIdx >= songs.length) currentTrackIdx = Math.max(0, songs.length - 1);
 }
 
@@ -1405,7 +1413,7 @@ function renderPlaylist() {
     </div>`).join('');
   pl.querySelectorAll('.playlist-item').forEach(el => { el.addEventListener('click', e => { if (!e.target.classList.contains('pl-del')) loadTrack(+el.dataset.idx); }); });
   if (isOwner) {
-    pl.querySelectorAll('.pl-del').forEach(btn => { btn.addEventListener('click', async e => { e.stopPropagation(); const idx=+btn.dataset.del; if(idx===currentTrackIdx){audio.pause();audio.src='';isPlaying=false;setPlayIcon(false);} URL.revokeObjectURL(songUrls[idx]); await idbDelete('songs',songs[idx].id); songs.splice(idx,1);songUrls.splice(idx,1); if(currentTrackIdx>=songs.length)currentTrackIdx=Math.max(0,songs.length-1); renderPlaylist(); updatePlayerDisplay(); }); });
+    pl.querySelectorAll('.pl-del').forEach(btn => { btn.addEventListener('click', async e => { e.stopPropagation(); const idx=+btn.dataset.del; if(idx===currentTrackIdx){audio.pause();audio.src='';isPlaying=false;setPlayIcon(false);} URL.revokeObjectURL(songUrls[idx]); await _fetch('DELETE','songs',{id:'eq.'+songs[idx].id}); try{await sbDeleteStorage('songs',songs[idx].file_path);}catch(e){} songs.splice(idx,1);songUrls.splice(idx,1); if(currentTrackIdx>=songs.length)currentTrackIdx=Math.max(0,songs.length-1); renderPlaylist(); updatePlayerDisplay(); }); });
   }
 }
 
@@ -1417,7 +1425,7 @@ audio.addEventListener('timeupdate',updateSeek);audio.addEventListener('loadedme
 document.getElementById('seek-bar').addEventListener('input',function(){audio.currentTime=this.value;});
 // 歌曲简介（站主可编辑）
 document.getElementById('desc-edit-btn').addEventListener('click',()=>{if(!songs.length||currentTrackIdx>=songs.length)return;const s=songs[currentTrackIdx];const el=document.getElementById('player-desc');el.innerHTML='<input id="desc-edit-input" value="'+escHtml(s.desc||'')+'" placeholder="添加简介..." style="width:100%;">';const inp=document.getElementById('desc-edit-input');inp.focus();inp.addEventListener('blur',()=>{saveSongDesc(inp.value);});inp.addEventListener('keydown',e=>{if(e.key==='Enter')saveSongDesc(inp.value);});});
-function saveSongDesc(val){const s=songs[currentTrackIdx];if(!s)return;s.desc=val.trim();idbPut('songs',{id:s.id,blob:s.blob,name:s.name,time:s.time,playlistId:s.playlistId,desc:s.desc});document.getElementById('player-desc').textContent=s.desc||'';}
+function saveSongDesc(val){const s=songs[currentTrackIdx];if(!s)return;s.desc=val.trim();_fetch('PATCH','songs',{id:'eq.'+s.id},{desc:s.desc});document.getElementById('player-desc').textContent=s.desc||'';}
 function updatePlayerDisplay() { if(!songs.length||currentTrackIdx>=songs.length){document.getElementById('player-cover').textContent='🎵';document.getElementById('player-title').textContent='选择一首歌';document.getElementById('player-artist').textContent='—';setPlayIcon(false);return;}document.getElementById('player-title').textContent=songs[currentTrackIdx].name;setPlayIcon(isPlaying);loadPlaylistComments(); }
 function togglePlay() { if(!songs.length)return; if(!audio.src||audio.src===window.location.href){loadTrack(0);} if(audio.paused){audio.play().catch(()=>{});isPlaying=true;setPlayIcon(true);}else{audio.pause();isPlaying=false;setPlayIcon(false);} }
 function getNextIdx() { if(!songs.length)return 0; if(playMode===0){let n;do{n=Math.floor(Math.random()*songs.length);}while(n===currentTrackIdx&&songs.length>1);return n;} return (currentTrackIdx+1)%songs.length; }
@@ -1429,7 +1437,7 @@ document.getElementById('btn-next').addEventListener('click', () => { if(songs.l
 audio.addEventListener('ended', () => { loadTrack(getNextIdx(), true); });
 audio.addEventListener('play', () => { isPlaying=true;setPlayIcon(true);syncHomePlayer(); });
 audio.addEventListener('pause', () => { isPlaying=false;setPlayIcon(false);syncHomePlayer(); });
-audio.addEventListener('error', () => { isPlaying=false;setPlayIcon(false);toast('⚠️ 播放失败'); });
+audio.addEventListener('error', () => { isPlaying=false;setPlayIcon(false);toast('⚠️ 播放失败，右键检查audio src是否可访问'); });
 
 // 播放模式切换：顺序 → 随机 → 列表循环
 const btnMode=document.getElementById('btn-mode');
@@ -1617,37 +1625,27 @@ document.getElementById('playlist-select').addEventListener('change', async () =
   await loadSongs(); renderPlaylist(); loadPlaylistComments();
 });
 document.getElementById('playlist-new').addEventListener('click', async () => {
-  const name = prompt('歌单名称：');
-  if (!name || !name.trim()) return;
-  await idbPut('playlists', { name: name.trim(), time: Date.now() });
-  const records = await idbGetAll('playlists'); records.sort((a, b) => a.time - b.time);
-  playlists = records; currentPlaylistId = records[records.length - 1].id;
-  renderPlaylistSelector();
-  await loadSongs(); renderPlaylist(); updatePlayerDisplay();
+  const name = prompt('歌单名称：'); if (!name || !name.trim()) return;
+  await _fetch('POST', 'playlists', null, { name: name.trim(), created_at: new Date().toISOString() });
+  const data = await _fetch('GET', 'playlists', { order: 'created_at.asc' });
+  playlists = data || []; currentPlaylistId = playlists[playlists.length - 1].id;
+  renderPlaylistSelector(); await loadSongs(); renderPlaylist(); updatePlayerDisplay();
   toast('✅ 歌单已创建');
 });
 document.getElementById('playlist-del').addEventListener('click', async () => {
   if (playlists.length <= 1) { toast('⚠️ 至少保留一个歌单'); return; }
-  if (!confirm('删除当前歌单？歌曲不会被删除，会移至默认歌单。')) return;
-  const delId = currentPlaylistId;
-  // 将该歌单的歌曲移到第一个歌单
-  const allSongs = await idbGetAll('songs');
-  for (const s of allSongs) {
-    if ((s.playlistId || playlists[0]?.id) === delId) {
-      await idbDelete('songs', s.id);
-      await idbPut('songs', { blob: s.blob, name: s.name, time: s.time, playlistId: playlists[0].id });
-    }
-  }
-  await idbDelete('playlists', delId);
-  const records = await idbGetAll('playlists'); records.sort((a, b) => a.time - b.time);
-  playlists = records; currentPlaylistId = playlists[0].id;
-  renderPlaylistSelector();
-  await loadSongs(); renderPlaylist(); updatePlayerDisplay();
+  if (!confirm('删除当前歌单及其中所有歌曲？')) return;
+  const songs = await _fetch('GET', 'songs', { playlist_id: 'eq.' + currentPlaylistId });
+  if (songs) for (const s of songs) { await _fetch('DELETE', 'songs', { id: 'eq.' + s.id }); }
+  await _fetch('DELETE', 'playlists', { id: 'eq.' + currentPlaylistId });
+  const data = await _fetch('GET', 'playlists', { order: 'created_at.asc' });
+  playlists = data || []; currentPlaylistId = playlists[0]?.id || 0;
+  renderPlaylistSelector(); await loadSongs(); renderPlaylist(); updatePlayerDisplay();
   toast('🗑️ 歌单已删除');
 });
 
 // MP3上传（带歌单ID）
-document.getElementById('song-upload-input').addEventListener('change',async e=>{const files=Array.from(e.target.files);let c=0;for(const f of files){if(!f.name.toLowerCase().endsWith('.mp3')&&f.type!=='audio/mp3'&&f.type!=='audio/mpeg')continue;try{await idbPut('songs',{blob:f,name:f.name.replace(/\.mp3$/i,''),time:Date.now(),playlistId:currentPlaylistId});c++;}catch(err){}} e.target.value='';await loadSongs();renderPlaylist();if(c)toast('✅ 已添加 '+c+' 首歌曲');});
+document.getElementById('song-upload-input').addEventListener('change',async e=>{const files=Array.from(e.target.files);let c=0,errs=0;for(const f of files){if(!f.name.toLowerCase().endsWith('.mp3')&&f.type!=='audio/mp3'&&f.type!=='audio/mpeg')continue;try{const path='pl_'+currentPlaylistId+'_'+Date.now()+'.mp3';await sbUpload('songs',path,f);await _fetch('POST','songs',null,{playlist_id:currentPlaylistId,name:f.name.replace(/\.mp3$/i,''),file_path:path,created_at:new Date().toISOString()});c++;}catch(err){errs++;toast('⚠️ 歌曲上传失败: '+(err.message||''));}} e.target.value='';await loadSongs();renderPlaylist();if(c)toast('✅ 已添加 '+c+' 首歌曲');});
 
 // ---- 网易云 ID 添加歌曲 ----
 
@@ -1658,9 +1656,13 @@ let photoRecords = [];     // [{id, blob, time}]
 let photoUrls = [];        // 对应的 object URLs
 
 async function loadPhotos() {
-  photoRecords = await idbGetAll('photos');
-  photoRecords.sort((a, b) => b.time - a.time);
-  photoUrls = photoRecords.map(r => URL.createObjectURL(r.blob));
+  photoRecords = []; photoUrls = [];
+  try {
+    const data = await sbListObjects('photos');
+    photoRecords = (data || []).filter(f => !f.name.startsWith('.')).map(f => ({ id: f.id, name: f.name, time: new Date(f.created_at).getTime() }));
+    photoRecords.sort((a,b) => b.time - a.time);
+    photoUrls = photoRecords.map(f => SB_URL + '/storage/v1/object/public/photos/' + f.name);
+  } catch(e) {}
 }
 let ctxTargetIdx = null;
 const ctxMenu = document.getElementById('context-menu');
@@ -1702,8 +1704,8 @@ document.getElementById('ctx-delete').addEventListener('click', async () => {
   if (ctxTargetIdx === null || !isOwner) return;
   const record = photoRecords[ctxTargetIdx];
   const url = photoUrls[ctxTargetIdx];
-  await idbDelete('photos', record.id);
-  URL.revokeObjectURL(url);
+  const pName = photoRecords[ctxTargetIdx].name;
+  await sbDeleteStorage('photos', pName);
   await loadPhotos();
   renderPhotos();
   updateStats();
@@ -1714,8 +1716,10 @@ document.getElementById('photo-input').addEventListener('change', async e => {
   const files = Array.from(e.target.files);
   for (const f of files) {
     if (!f.type.startsWith('image/')) continue;
-    try { await idbPut('photos', { blob: f, time: Date.now() }); }
-    catch (err) { toast('⚠️ 照片存储失败'); }
+    try {
+      const path = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '.jpg';
+      await sbUpload('photos', path, f);
+    } catch (err) { toast('⚠️ 照片上传失败'); }
   }
   e.target.value = '';
   await loadPhotos();
@@ -1726,9 +1730,16 @@ document.getElementById('lightbox-close').addEventListener('click', () => docume
 document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('show'); });
 
 // ==========================================
-// 随笔（卡片网格 + 详情页 + Supabase 点赞评论）
+// 随笔（Supabase 云端 + 点赞评论）
 // ==========================================
-let notes = LS.get('notes', []);
+let notes = [];
+
+async function loadNotes() {
+  try {
+    const data = await _fetch('GET', 'notes', { order: 'created_at.desc' });
+    notes = data || [];
+  } catch(e) { notes = []; }
+}
 let currentDetailNoteId = null;
 
 async function renderNotes() {
@@ -1744,7 +1755,7 @@ async function renderNotes() {
   let html = '';
   for (let i = notes.length - 1; i >= 0; i--) {
     const n = notes[i];
-    const noteId = String(n.time);
+    const noteId = String(n.id);
     const preview = n.content.length > 100 ? n.content.slice(0, 100) + '...' : n.content;
     const [{ count: likeCount }, likedData] = await Promise.all([
       _cnt('likes', { note_id: 'eq.' + noteId }),
@@ -1755,7 +1766,7 @@ async function renderNotes() {
     <div class="note-card" data-note-id="${noteId}" data-idx="${i}">
       <div class="note-card-preview">${escHtml(preview)}</div>
       <div class="note-card-footer">
-        <span>${escHtml(n.author||'匿名')} · ${fmtTime(n.time)}</span>
+        <span>${escHtml(n.author||'匿名')} · ${fmtTime(n.created_at||n.time)}</span>
         <span class="note-card-social">
           <span class="like-btn${liked?' liked':''}" data-note="${noteId}">${liked?'❤️':'🤍'} ${likeCount||0}</span>
           <span>💬</span>
@@ -1804,7 +1815,7 @@ async function showNoteDetail(noteId, idx) {
   const delBack = "document.getElementById('notes-back').click()";
   document.getElementById('note-detail-content').innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-      '<span style="font-size:12px;color:var(--text-muted);">' + escHtml(n.author||'匿名') + ' · ' + fmtTime(n.time) + '</span>' +
+      '<span style="font-size:12px;color:var(--text-muted);">' + escHtml(n.author||'匿名') + ' · ' + fmtTime(n.created_at||n.time) + '</span>' +
       '<span style="display:flex;gap:6px;">' +
         '<button class="like-btn' + (liked ? ' liked' : '') + '" id="detail-like-btn">' + (liked ? '❤️' : '🤍') + ' <span>' + (likeCount || 0) + '</span></button>' +
         (isOwner ? '<button onclick="editNote(' + idx + ')" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;">编辑</button><button onclick="deleteNote(' + idx + ');' + delBack + ';" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;">删除</button>' : '') +
@@ -1875,24 +1886,31 @@ document.getElementById('notes-back').addEventListener('click', () => {
 });
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function fmtTime(ts) { const d=new Date(ts); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function fmtTime(ts) { const d=ts ? new Date(ts) : new Date(); if(isNaN(d.getTime()))return''; return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 
-document.getElementById('notes-submit').addEventListener('click', () => {
+document.getElementById('notes-submit').addEventListener('click', async () => {
   const input = document.getElementById('notes-input');
   const content = input.value.trim(); if (!content) return;
-  notes.unshift({ content, time: Date.now(), author: (userProfile?.display_name || '匿名') });
-  LS.set('notes', notes); input.value = ''; renderNotes();
+  await _fetch('POST', 'notes', null, { content, author: (userProfile?.display_name || '匿名'), created_at: new Date().toISOString() });
+  input.value = ''; await loadNotes(); renderNotes();
 });
 function editNote(i) {
   document.getElementById('note-edit-' + i).style.display = 'block';
 }
-function saveNoteEdit(i) {
+async function saveNoteEdit(i) {
   const ta = document.getElementById('note-ta-' + i);
-  notes[i].content = ta.value.trim(); if (!notes[i].content) { deleteNote(i); return; }
-  LS.set('notes', notes);
-  showNoteDetail(String(notes[i].time), i);
+  const n = notes[i]; if (!n) return;
+  const content = ta.value.trim(); if (!content) { await deleteNote(i); return; }
+  await _fetch('PATCH', 'notes', { id: 'eq.' + n.id }, { content });
+  await loadNotes();
+  const newId = notes[i] ? String(notes[i].id) : null;
+  if (newId) showNoteDetail(newId, i);
 }
-function deleteNote(i) { notes.splice(i,1); LS.set('notes', notes); renderNotes(); }
+async function deleteNote(i) {
+  const n = notes[i]; if (!n) return;
+  await _fetch('DELETE', 'notes', { id: 'eq.' + n.id });
+  await loadNotes(); renderNotes();
+}
 
 // ==========================================
 // 关于
@@ -1916,7 +1934,9 @@ document.getElementById('about-save').addEventListener('click', () => {
 // 初始化（异步）
 // ==========================================
 (async function init() {
-  try { await openIDB(); await loadWallpaper(); await loadPhotos(); await loadPlaylists(); await loadSongs(); } catch (e) { console.error('Init error:', e); toast('⚠️ 数据加载失败，请按F12→Application→IndexedDB→删除zao-db后刷新'); }
+  try { await openIDB(); await loadWallpaper(); await loadPhotos(); await loadPlaylists(); await loadSongs(); } catch (e) {}
+  try { await loadProjects(); } catch(e) {}
+  try { await loadNotes(); } catch(e) {}
   await checkAuth();
   updateStats();
 })();
