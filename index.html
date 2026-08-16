@@ -173,12 +173,24 @@ body.dark .vis-right { border-left-color:rgba(180,140,140,0.2); }
 #home-player .player-controls { justify-content:center; }
 .home-songlist-btn { background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:4px;transition:color 0.2s; }
 .home-songlist-btn:hover { color:var(--text); }
-.home-songlist-popup { display:none;width:100%;max-height:220px;overflow-y:auto;background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius);padding:4px 0;margin-top:8px;text-align:left; }
+.home-songlist-popup { display:none;position:absolute;z-index:8;top:50px;right:18px;width:min(280px,calc(100% - 36px));max-height:220px;overflow-y:auto;overscroll-behavior:contain;background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius);padding:4px 0;margin:0;text-align:left;box-shadow:var(--shadow); }
 .home-songlist-popup.show { display:block; }
 .home-songlist-popup .playlist-item { padding:6px 10px;cursor:pointer;font-size:11px;transition:background 0.1s; }
 .home-songlist-popup .playlist-item:hover,
 .home-songlist-popup .playlist-item.playing { background:var(--surface-hover); }
-#home-player { overflow:hidden; }
+#home-player { position:relative;overflow:visible; }
+.home-overview { display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:24px;margin-top:28px;padding-top:22px;border-top:1px solid var(--border); }
+.home-overview-section { min-width:0; }
+.home-overview-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:8px; }
+.home-overview-head h2 { margin:0;font-size:14px;font-family:inherit; }
+.home-overview-link { border:0;background:none;padding:3px 0;color:var(--text-muted);font:inherit;font-size:11px;cursor:pointer; }
+.home-overview-link:hover { color:var(--accent); }
+.home-overview-list { border-top:1px solid var(--border); }
+.home-overview-item { display:block;width:100%;padding:9px 0;border:0;border-bottom:1px solid var(--border);background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer; }
+.home-overview-item:hover .home-overview-title { color:var(--accent); }
+.home-overview-title { display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:600; }
+.home-overview-meta { display:block;margin-top:3px;color:var(--text-muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.home-overview-empty { margin:0;padding:12px 0;border-bottom:1px solid var(--border);color:var(--text-muted);font-size:12px; }
 
 /* ==========================================
    卡片 & 项目
@@ -223,8 +235,8 @@ body.dark .vis-right { border-left-color:rgba(180,140,140,0.2); }
 .music-library-head h3 { margin:0; }
 .music-library-head p { margin:4px 0 0;font-size:11px;color:var(--text-muted);line-height:1.55; }
 .original-library { display:flex;flex-direction:column;height:430px; }
-.original-library #playlist { overflow-y:auto; }
-.original-track-list { flex:1;min-height:0;overflow:hidden; }
+.original-library #playlist { flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:4px; }
+.original-track-list { display:flex;flex:1;flex-direction:column;min-height:0;overflow:hidden; }
 .lyrics-panel { margin:0 0 14px;padding:10px 12px;max-height:130px;overflow-y:auto;text-align:left;background:var(--surface-hover);border-radius:var(--radius);color:var(--text-sub);font-size:12px;line-height:1.8;white-space:pre-line; }
 .lyrics-panel:empty::before { content:'原创作品的歌词会显示在这里';color:var(--text-muted); }
 .playlist-select-row { display:flex;gap:4px;margin-bottom:10px; }
@@ -543,6 +555,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
    ========================================== */
 @media (max-width:768px) {
   .home-grid { grid-template-columns:1fr; }
+  .home-overview { grid-template-columns:1fr;gap:20px; }
   .music-layout { grid-template-columns:1fr; }
   .profile-top { flex-direction:column;text-align:center; }
   .nav-bar { padding:0 12px; }
@@ -623,6 +636,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
           <input type="range" id="home-volume-slider" min="0" max="100" value="80" class="volume-slider">
         </span>
       </div>
+      <div class="home-songlist-popup" id="home-songlist-popup"></div>
     </div>
   </div>
   <div class="visualizer-bar" id="visualizer-bar">
@@ -630,7 +644,20 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
     <div class="vis-mid"><span id="greeting-text">下午好</span></div>
     <div class="vis-right"><span id="live-clock">00:00:00</span></div>
   </div>
-  <div class="home-songlist-popup" id="home-songlist-popup"></div>
+  <section class="home-overview" aria-label="主页速览">
+    <div class="home-overview-section">
+      <div class="home-overview-head"><h2>最近随笔</h2><button class="home-overview-link" data-home-page="notes">查看全部</button></div>
+      <div class="home-overview-list" id="home-recent-notes"></div>
+    </div>
+    <div class="home-overview-section">
+      <div class="home-overview-head"><h2>最近喜好</h2><button class="home-overview-link" data-home-page="favorites">查看全部</button></div>
+      <div class="home-overview-list" id="home-recent-favorites"></div>
+    </div>
+    <div class="home-overview-section">
+      <div class="home-overview-head"><h2>项目速览</h2><button class="home-overview-link" data-home-page="projects">查看全部</button></div>
+      <div class="home-overview-list" id="home-recent-projects"></div>
+    </div>
+  </section>
 </section>
 
 <!-- 项目页面 -->
@@ -1069,7 +1096,7 @@ async function logout() {
 }
 
 function renderAll() {
-  if (currentPage === 'home') { updateStats(); renderHomePlaylistSelect(); syncHomePlayer(); }
+  if (currentPage === 'home') { updateStats(); renderHomeOverview(); renderHomePlaylistSelect(); syncHomePlayer(); }
   if (currentPage === 'photos') renderPhotos();
   if (currentPage === 'music') { renderPlaylist(); updatePlayerDisplay(); }
   if (currentPage === 'favorites') renderFavorites();
@@ -1156,7 +1183,7 @@ function switchPage(name) {
   currentPage = name;
   navBtns.forEach(b => b.classList.toggle('active', b.dataset.page === name));
   pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
-  if (name === 'home') updateStats();
+  if (name === 'home') { updateStats(); renderHomeOverview(); }
   if (name === 'projects') { document.querySelectorAll('.owner-only-el').forEach(el => el.style.display = isOwner ? '' : 'none'); renderProjects(); }
   if (name === 'music') { renderPlaylistSelector(); renderPlaylist(); updatePlayerDisplay(); }
   if (name === 'favorites') renderFavorites();
@@ -1405,6 +1432,29 @@ function updateStats() {
   document.getElementById('stat-photos').textContent = photoRecords.length;
   document.getElementById('stat-notes').textContent = notes.length;
 }
+
+function renderHomeOverview() {
+  const renderList = (id, rows, emptyText) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = rows.length ? rows.join('') : `<p class="home-overview-empty">${emptyText}</p>`;
+  };
+  renderList('home-recent-notes', notes.slice(0, 3).map(note => {
+    const title = String(note.content || '').replace(/\s+/g, ' ').trim() || '无标题随笔';
+    return `<button class="home-overview-item" data-home-page="notes"><span class="home-overview-title">${escHtml(title)}</span><span class="home-overview-meta">${fmtTime(note.created_at || note.time)}</span></button>`;
+  }), '还没有随笔。');
+  renderList('home-recent-favorites', favoriteItems.slice(0, 3).map(item => {
+    const category = favoriteCategories.find(c => String(c.id) === String(item.category_id));
+    const meta = [category?.name || (item.media_type === 'anime' ? '动画' : '漫画'), item.rating != null ? `${item.rating} / 10` : favoriteStatusText(item.status)].filter(Boolean).join(' · ');
+    return `<button class="home-overview-item" data-home-page="favorites"><span class="home-overview-title">${escHtml(item.title)}</span><span class="home-overview-meta">${escHtml(meta)}</span></button>`;
+  }), '还没有喜好记录。');
+  renderList('home-recent-projects', projects.slice(0, 3).map(project => {
+    const meta = project.desc || project['desc'] || (project.tags || []).join(' · ') || '暂无简介';
+    return `<button class="home-overview-item" data-home-page="projects"><span class="home-overview-title">${escHtml(project.title)}</span><span class="home-overview-meta">${escHtml(meta)}</span></button>`;
+  }), '还没有项目记录。');
+}
+
+document.querySelectorAll('[data-home-page]').forEach(button => button.addEventListener('click', () => switchPage(button.dataset.homePage)));
 
 // ==========================================
 // 项目页面
