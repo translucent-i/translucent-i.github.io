@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <title>早哦早餐铺</title>
 <link rel="icon" type="image/svg+xml" href="favicon/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
@@ -23,8 +23,8 @@
   --surface-hover: rgba(255,215,220,0.8);
   --surface-solid: #ffe8ec;
   --text: #1A1A1A;
-  --text-sub: #6B6B6B;
-  --text-muted: #999;
+  --text-sub: #555;
+  --text-muted: #777;
   --accent: #FFB7B2;
   --accent-hover: #ffa49e;
   --border: rgba(190,150,155,0.18);
@@ -43,15 +43,15 @@ body.dark {
   --surface-hover: rgba(40,24,30,0.8);
   --surface-solid: #1f1418;
   --text: #eee;
-  --text-sub: #ccc;
-  --text-muted: #988;
+  --text-sub: #d8d0d2;
+  --text-muted: #b8a9ae;
   --border: rgba(180,140,150,0.12);
   --shadow: 0 2px 12px rgba(0,0,0,0.12), 0 4px 20px rgba(0,0,0,0.06);
 }
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 html { scroll-behavior: smooth; }
 body {
-  font-family: 'Noto Serif SC', 'Georgia', 'Source Han Serif SC', 'SimSun', serif;
+  font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-weight: 400;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -64,6 +64,7 @@ body {
   background-attachment: fixed;
   position: relative;
 }
+h1,h2,h3,.nav-name,.profile-name,.vis-mid { font-family:'Noto Serif SC','Source Han Serif SC','SimSun',serif; }
 /* 壁纸背景层 */
 body::before {
   content: ''; position: fixed; inset: 0; z-index: -1;
@@ -172,12 +173,12 @@ body.dark .vis-right { border-left-color:rgba(180,140,140,0.2); }
 #home-player .player-controls { justify-content:center; }
 .home-songlist-btn { background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:4px;transition:color 0.2s; }
 .home-songlist-btn:hover { color:var(--text); }
-.home-songlist-popup { display:none;position:fixed;width:220px;max-height:60vh;overflow-y:auto;background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius);padding:4px 0;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.15); }
+.home-songlist-popup { display:none;width:100%;max-height:220px;overflow-y:auto;background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius);padding:4px 0;margin-top:8px;text-align:left; }
 .home-songlist-popup.show { display:block; }
 .home-songlist-popup .playlist-item { padding:6px 10px;cursor:pointer;font-size:11px;transition:background 0.1s; }
 .home-songlist-popup .playlist-item:hover,
 .home-songlist-popup .playlist-item.playing { background:var(--surface-hover); }
-#home-player { overflow:visible; }
+#home-player { overflow:hidden; }
 
 /* ==========================================
    卡片 & 项目
@@ -215,7 +216,17 @@ body.dark .vis-right { border-left-color:rgba(180,140,140,0.2); }
 /* ==========================================
    音乐页面 — MP3 上传
    ========================================== */
-.music-layout { display:grid; grid-template-columns: 280px 1fr; gap:20px; align-items:start; }
+.music-layout { display:grid; grid-template-columns:minmax(300px,.75fr) minmax(0,1.25fr); gap:20px; align-items:start; }
+.music-left,.music-right { min-width:0; }
+#page-music { max-width:1440px; }
+.music-library-head { margin-bottom:12px; }
+.music-library-head h3 { margin:0; }
+.music-library-head p { margin:4px 0 0;font-size:11px;color:var(--text-muted);line-height:1.55; }
+.original-library { display:flex;flex-direction:column;height:430px; }
+.original-library #playlist { overflow-y:auto; }
+.original-track-list { flex:1;min-height:0;overflow:hidden; }
+.lyrics-panel { margin:0 0 14px;padding:10px 12px;max-height:130px;overflow-y:auto;text-align:left;background:var(--surface-hover);border-radius:var(--radius);color:var(--text-sub);font-size:12px;line-height:1.8;white-space:pre-line; }
+.lyrics-panel:empty::before { content:'原创作品的歌词会显示在这里';color:var(--text-muted); }
 .playlist-select-row { display:flex;gap:4px;margin-bottom:10px; }
 .playlist-select { flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;cursor:pointer; }
 .playlist-new-btn { padding:6px 10px;background:none;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;cursor:pointer;color:var(--text-sub);font-family:inherit;transition:all 0.2s; }
@@ -390,6 +401,71 @@ body.dark .mode-icon { filter:invert(1); }
 .about-editor button:hover { filter:brightness(0.9); }
 
 /* ==========================================
+   喜好
+   ========================================== */
+.favorites-toolbar { display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px; }
+.favorites-toolbar h2 { font-size:20px;margin-bottom:4px; }
+.favorites-toolbar p { font-size:12px;color:var(--text-muted); }
+.favorite-add-btn { padding:9px 13px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text-sub);font-family:inherit;font-size:12px;cursor:pointer;white-space:nowrap; }
+.favorite-add-btn:hover { color:var(--accent);border-color:var(--accent); }
+.favorites-columns { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px; }
+.favorite-section { min-width:0;background:var(--surface);backdrop-filter:var(--blur-card);-webkit-backdrop-filter:var(--blur-card);border:2px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow); }
+.favorite-section-head { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px; }
+.favorite-section-head h3 { font-size:16px; }
+.favorite-category-add { border:none;background:none;color:var(--text-muted);font:inherit;font-size:12px;cursor:pointer;padding:4px; }
+.favorite-category-add:hover { color:var(--accent); }
+.favorite-categories { display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:2px; }
+.favorite-category-wrap { display:inline-flex;align-items:center;flex:0 0 auto; }
+.favorite-category { flex:0 0 auto;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--text-sub);font:inherit;font-size:11px;padding:4px 9px;cursor:pointer; }
+.favorite-category.active,.favorite-category:hover { background:var(--surface-hover);border-color:var(--accent);color:var(--text); }
+.favorite-category-action { width:18px;height:18px;border:0;background:none;color:var(--text-muted);font:inherit;font-size:11px;cursor:pointer;padding:0; }
+.favorite-category-action:hover { color:var(--accent); }
+.favorite-scroll { height:520px;overflow-y:auto;padding-right:4px; }
+.favorite-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px;align-content:start; }
+.favorite-card { position:relative;min-width:0;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-hover);cursor:pointer;transition:border-color .2s,transform .2s; }
+.favorite-card:hover { border-color:var(--accent);transform:translateY(-1px); }
+.favorite-cover { width:100%;aspect-ratio:2/3;display:block;object-fit:cover;background:var(--surface-solid);image-rendering:auto;-webkit-backface-visibility:hidden;backface-visibility:hidden; }
+.favorite-empty-cover { width:100%;aspect-ratio:2/3;display:grid;place-items:center;background:var(--surface-solid);color:var(--text-muted);font-size:24px; }
+.favorite-info { padding:8px; }
+.favorite-title { font-size:12px;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.favorite-meta { margin-top:3px;font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.favorite-delete { position:absolute;top:5px;right:5px;width:21px;height:21px;border:0;border-radius:50%;background:rgba(0,0,0,.48);color:#fff;cursor:pointer;font-size:12px;display:none; }
+.favorite-card:hover .favorite-delete { display:block; }
+.favorite-empty { grid-column:1/-1;padding:42px 12px;color:var(--text-muted);font-size:12px;text-align:center; }
+.favorite-overlay { display:none;position:fixed;inset:0;z-index:190;background:rgba(0,0,0,.28); }
+.favorite-overlay.show { display:block; }
+.favorite-modal { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(620px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow-y:auto;background:var(--surface-solid);border:2px solid var(--border);border-radius:var(--radius-lg);padding:22px;box-shadow:0 16px 48px rgba(0,0,0,.18); }
+.favorite-modal-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:16px; }
+.favorite-modal-head h3 { font-size:16px; }
+.favorite-modal-close { border:0;background:none;color:var(--text-muted);font-size:18px;cursor:pointer;padding:2px 6px; }
+.favorite-fields { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px; }
+.favorite-fields .full { grid-column:1/-1; }
+.favorite-fields label { display:block;font-size:11px;color:var(--text-sub); }
+.favorite-fields input,.favorite-fields select,.favorite-fields textarea { width:100%;margin-top:4px;padding:8px 9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font:inherit;font-size:12px;outline:none; }
+.favorite-fields textarea { min-height:68px;resize:vertical; }
+.favorite-fields input:focus,.favorite-fields select:focus,.favorite-fields textarea:focus { border-color:var(--accent); }
+.favorite-search-row { display:flex;gap:8px;margin:14px 0 8px; }
+.favorite-search-row input { flex:1;padding:9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font:inherit;font-size:12px;outline:none; }
+.favorite-search-row button,.favorite-save { border:0;border-radius:var(--radius);background:var(--accent);color:#fff;font:inherit;font-size:12px;cursor:pointer;padding:9px 12px; }
+.favorite-results { display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;max-height:190px;overflow-y:auto;margin-bottom:14px; }
+.favorite-result { border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font:inherit;text-align:left;padding:6px;cursor:pointer; }
+.favorite-result:hover { border-color:var(--accent); }
+.favorite-result img { display:block;width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;background:var(--surface-hover);margin-bottom:5px; }
+.favorite-result span { display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.favorite-save { width:100%;margin-top:14px; }
+.favorite-detail-overlay { display:none;position:fixed;inset:0;z-index:191;background:rgba(0,0,0,.34); }
+.favorite-detail-overlay.show { display:block; }
+.favorite-detail-modal { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow-y:auto;background:var(--surface-solid);border:2px solid var(--border);border-radius:var(--radius-lg);padding:24px;box-shadow:0 16px 48px rgba(0,0,0,.2); }
+.favorite-detail-layout { display:grid;grid-template-columns:180px minmax(0,1fr);gap:22px;align-items:start; }
+.favorite-detail-cover { width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:var(--radius);background:var(--surface-hover);image-rendering:auto; }
+.favorite-detail-title { font-size:21px;line-height:1.35;margin-bottom:4px; }
+.favorite-detail-native { font-size:13px;color:var(--text-sub);margin-bottom:16px; }
+.favorite-detail-meta { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:16px; }
+.favorite-detail-meta div { padding:8px 9px;background:var(--surface-hover);border-radius:var(--radius);font-size:12px; }
+.favorite-detail-meta span { display:block;font-size:10px;color:var(--text-muted);margin-bottom:2px; }
+.favorite-detail-note { white-space:pre-wrap;font-size:13px;line-height:1.8;color:var(--text-sub); }
+
+/* ==========================================
    壁纸面板
    ========================================== */
 .wp-overlay {
@@ -475,6 +551,12 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
   .project-grid { grid-template-columns:1fr; }
   .photo-grid { grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); }
   .notes-grid { grid-template-columns: 1fr; }
+  .favorites-columns { grid-template-columns:1fr; }
+  .favorite-scroll { height:440px; }
+  .favorite-modal { padding:18px; }
+  .favorite-detail-modal { padding:18px; }
+  .favorite-detail-layout { grid-template-columns:116px minmax(0,1fr);gap:14px; }
+  .favorite-detail-title { font-size:17px; }
 }
 </style>
 </head>
@@ -490,6 +572,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
     <button class="nav-btn active" data-page="home">主页</button>
     <button class="nav-btn" data-page="projects">项目</button>
     <button class="nav-btn" data-page="music">音乐</button>
+    <button class="nav-btn" data-page="favorites">喜好</button>
     <button class="nav-btn" data-page="photos">照片墙</button>
     <button class="nav-btn" data-page="notes">随笔</button>
     <button class="nav-btn" data-page="about">关于</button>
@@ -569,16 +652,21 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
   <div class="music-layout">
     <!-- 左栏：上传 + 歌单 -->
     <div class="music-left">
+      <section class="playlist-panel original-library">
+        <div class="music-library-head">
+          <div><h3>我的音乐</h3><p>上传的旋律、灵感与原创作品。</p></div>
+        </div>
       <div class="playlist-select-row">
         <select id="playlist-select" class="playlist-select"></select>
         <button id="playlist-new" class="playlist-new-btn owner-only-el" title="新建歌单" style="display:none;">＋</button>
         <button id="playlist-del" class="playlist-new-btn owner-only-el" title="删除歌单" style="display:none;color:#e55;">✕</button>
       </div>
       <label class="music-upload-btn owner-only-el" title="上传 MP3 文件" style="display:none;">📂 上传音乐<input type="file" accept="audio/mp3,audio/mpeg,.mp3" id="song-upload-input" style="display:none" multiple></label>
-      <div class="playlist-panel">
+      <div class="original-track-list">
         <h3>🎵 歌单</h3>
         <div id="playlist"></div>
       </div>
+      </section>
     </div>
     <!-- 右栏：播放器 -->
     <div class="music-right">
@@ -590,6 +678,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
           <span class="player-desc" id="player-desc"></span>
           <button class="desc-edit-btn owner-only-el" id="desc-edit-btn" style="display:none;" title="编辑简介">✏️</button>
         </div>
+        <div class="lyrics-panel" id="player-lyrics" aria-label="歌词"></div>
         <div class="player-seek">
           <span class="seek-time" id="seek-current">0:00</span>
           <input type="range" class="seek-bar" id="seek-bar" min="0" max="100" value="0" step="0.1">
@@ -620,6 +709,26 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
         <div id="pl-comment-list" style="margin-top:8px;"></div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- 喜好页面 -->
+<section class="page" id="page-favorites">
+  <div class="favorites-toolbar">
+    <div><h2>喜好</h2><p>记录看过的动画和漫画。</p></div>
+    <button class="favorite-add-btn owner-only-el" id="favorite-add-btn" style="display:none;">＋ 新增记录</button>
+  </div>
+  <div class="favorites-columns">
+    <section class="favorite-section" data-media-type="anime">
+      <div class="favorite-section-head"><h3>喜欢的动画</h3><button class="favorite-category-add owner-only-el" data-media-type="anime" style="display:none;">＋ 分类</button></div>
+      <div class="favorite-categories" id="favorite-anime-categories"></div>
+      <div class="favorite-scroll"><div class="favorite-grid" id="favorite-anime-grid"></div></div>
+    </section>
+    <section class="favorite-section" data-media-type="manga">
+      <div class="favorite-section-head"><h3>喜欢的漫画</h3><button class="favorite-category-add owner-only-el" data-media-type="manga" style="display:none;">＋ 分类</button></div>
+      <div class="favorite-categories" id="favorite-manga-categories"></div>
+      <div class="favorite-scroll"><div class="favorite-grid" id="favorite-manga-grid"></div></div>
+    </section>
   </div>
 </section>
 
@@ -684,6 +793,38 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
   <button id="auth-submit">登录</button>
   <p id="auth-err" style="font-size:11px;color:#e55;text-align:center;margin-top:6px;"></p>
   <p id="auth-switch" style="font-size:12px;color:var(--text-sub);text-align:center;margin-top:8px;cursor:pointer;">没有账号？<span style="color:var(--accent);">注册</span></p>
+</div>
+
+<!-- 新增喜好弹窗 -->
+<div class="favorite-overlay" id="favorite-overlay">
+  <div class="favorite-modal" role="dialog" aria-modal="true" aria-labelledby="favorite-modal-title">
+    <div class="favorite-modal-head"><h3 id="favorite-modal-title">新增喜好</h3><button class="favorite-modal-close" id="favorite-modal-close" title="关闭">✕</button></div>
+    <div class="favorite-fields">
+      <label>类型<select id="favorite-type"><option value="anime">动画</option><option value="manga">漫画</option></select></label>
+      <label>分类<select id="favorite-category"></select></label>
+    </div>
+    <div class="favorite-search-row"><input id="favorite-search" placeholder="支持中文、日文、英文名称"><button id="favorite-search-btn">搜索</button></div>
+    <div class="favorite-results" id="favorite-results"></div>
+    <div class="favorite-fields">
+      <label class="full">名称<input id="favorite-title" maxlength="120" placeholder="可手动填写"></label>
+      <label>原名<input id="favorite-title-native" maxlength="120"></label>
+      <label>年份<input id="favorite-year" type="number" min="1900" max="2100"></label>
+      <label class="full">封面链接<input id="favorite-cover-url" type="url" placeholder="https://..."></label>
+      <label>状态<select id="favorite-status"><option value="planned">想看 / 想读</option><option value="watching">进行中</option><option value="completed">已完成</option><option value="paused">暂停</option><option value="dropped">搁置</option></select></label>
+      <label>进度<input id="favorite-progress" type="number" min="0" value="0"></label>
+      <label>评分（0-10）<input id="favorite-rating" type="number" min="0" max="10" step="0.1"></label>
+      <label class="full">短评<textarea id="favorite-note" maxlength="500" placeholder="留下自己的感受..."></textarea></label>
+    </div>
+    <button class="favorite-save" id="favorite-save">保存记录</button>
+  </div>
+</div>
+
+<!-- 喜好详情弹窗 -->
+<div class="favorite-detail-overlay" id="favorite-detail-overlay">
+  <div class="favorite-detail-modal" role="dialog" aria-modal="true" aria-labelledby="favorite-detail-title">
+    <div class="favorite-modal-head"><h3 id="favorite-detail-title">记录详情</h3><button class="favorite-modal-close" id="favorite-detail-close" title="关闭">✕</button></div>
+    <div id="favorite-detail-content"></div>
+  </div>
 </div>
 
 <!-- 个人资料弹窗 -->
@@ -925,6 +1066,7 @@ function renderAll() {
   if (currentPage === 'home') { updateStats(); renderHomePlaylistSelect(); syncHomePlayer(); }
   if (currentPage === 'photos') renderPhotos();
   if (currentPage === 'music') { renderPlaylist(); updatePlayerDisplay(); }
+  if (currentPage === 'favorites') renderFavorites();
   if (currentPage === 'notes') renderNotes();
   if (currentPage === 'about') renderAbout();
 }
@@ -999,6 +1141,7 @@ function switchPage(name) {
   if (name === 'home') updateStats();
   if (name === 'projects') { document.querySelectorAll('.owner-only-el').forEach(el => el.style.display = isOwner ? '' : 'none'); renderProjects(); }
   if (name === 'music') { renderPlaylistSelector(); renderPlaylist(); updatePlayerDisplay(); }
+  if (name === 'favorites') renderFavorites();
   if (name === 'photos') renderPhotos();
   if (name === 'notes') {
     document.getElementById('notes-grid-view').style.display = '';
@@ -1417,7 +1560,7 @@ function renderPlaylist() {
   }
 }
 
-function loadTrack(idx, autoPlay) { if(!songs.length)return; currentTrackIdx=idx; audio.src=songUrls[idx]; document.getElementById('player-cover').textContent='🎵'; document.getElementById('player-title').textContent=songs[idx].name; document.getElementById('player-artist').textContent=''; const de=document.getElementById('player-desc');const sd=songs[idx].desc||'';de.textContent=sd;document.getElementById('desc-edit-btn').style.display=isOwner?'':'none'; renderPlaylist(); syncHomePlayer();updateSeek(); if(autoPlay){ audio.play().catch(()=>{}); isPlaying=true; setPlayIcon(true); } else { isPlaying=false; setPlayIcon(false); } }
+function loadTrack(idx, autoPlay) { if(!songs.length)return; currentTrackIdx=idx; audio.src=songUrls[idx]; document.getElementById('player-cover').textContent='🎵'; document.getElementById('player-title').textContent=songs[idx].name; document.getElementById('player-artist').textContent=''; const de=document.getElementById('player-desc');const sd=songs[idx].desc||'';de.textContent=sd;document.getElementById('player-lyrics').textContent=songs[idx].lyrics||'';document.getElementById('desc-edit-btn').style.display=isOwner?'':'none'; renderPlaylist(); syncHomePlayer();updateSeek(); if(autoPlay){ audio.play().catch(()=>{}); isPlaying=true; setPlayIcon(true); } else { isPlaying=false; setPlayIcon(false); } }
 // 时间轴
 function updateSeek(){const s=audio.duration;document.getElementById('seek-bar').max=s||0;document.getElementById('seek-bar').value=audio.currentTime||0;document.getElementById('seek-current').textContent=fmtDur(audio.currentTime);document.getElementById('seek-total').textContent=fmtDur(s);}
 function fmtDur(sec){if(!sec||!isFinite(sec))return'0:00';const m=Math.floor(sec/60);return m+':'+String(Math.floor(sec%60)).padStart(2,'0');}
@@ -1486,10 +1629,12 @@ function updatePlayerDisplay() {
     document.getElementById('player-cover').textContent = '🎵';
     document.getElementById('player-title').textContent = '选择一首歌';
     document.getElementById('player-artist').textContent = '—';
+    document.getElementById('player-lyrics').textContent = '';
     setPlayIcon(false);
     return;
   }
   document.getElementById('player-title').textContent = songs[currentTrackIdx].name;
+  document.getElementById('player-lyrics').textContent = songs[currentTrackIdx].lyrics || '';
   setPlayIcon(isPlaying);
   loadPlaylistComments();
 }
@@ -1509,7 +1654,7 @@ function renderHomePopupSongs() {
 // 按钮
 const homeSonglistBtn = document.getElementById('home-songlist-btn');
 const homeSonglistPopup = document.getElementById('home-songlist-popup');
-homeSonglistBtn.addEventListener('click', (e) => { e.stopPropagation(); if(homeSonglistPopup.classList.contains('show')){homeSonglistPopup.classList.remove('show');return;} renderHomePopupSongs(); const cr=document.getElementById('home-player').getBoundingClientRect(); homeSonglistPopup.style.top=cr.top+'px'; homeSonglistPopup.style.left=cr.right+'px'; homeSonglistPopup.classList.add('show'); });
+homeSonglistBtn.addEventListener('click', (e) => { e.stopPropagation(); if(homeSonglistPopup.classList.contains('show')){homeSonglistPopup.classList.remove('show');return;} renderHomePopupSongs(); homeSonglistPopup.classList.add('show'); });
 document.addEventListener('click', (e) => { if (!e.target.closest('#home-songlist-btn') && !e.target.closest('#home-songlist-popup')) homeSonglistPopup.classList.remove('show'); });
 function syncHomePlayer() {
   const icon = document.getElementById('home-play-icon');
@@ -1885,7 +2030,7 @@ document.getElementById('notes-back').addEventListener('click', () => {
   renderNotes();
 });
 
-function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtTime(ts) { const d=ts ? new Date(ts) : new Date(); if(isNaN(d.getTime()))return''; return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 
 document.getElementById('notes-submit').addEventListener('click', async () => {
@@ -1913,6 +2058,288 @@ async function deleteNote(i) {
 }
 
 // ==========================================
+// 喜好（Supabase + AniList 搜索）
+// ==========================================
+let favoriteCategories = [];
+let favoriteItems = [];
+let activeFavoriteCategory = { anime: null, manga: null };
+let favoriteSearchResults = [];
+let selectedFavoriteSource = { source: 'manual', sourceId: null };
+
+async function loadFavorites() {
+  const [categories, items] = await Promise.all([
+    _fetch('GET', 'favorite_categories', { order: 'media_type.asc,sort_order.asc,name.asc' }),
+    _fetch('GET', 'favorites', { order: 'created_at.desc' })
+  ]);
+  favoriteCategories = categories || [];
+  favoriteItems = items || [];
+}
+
+function favAttr(value) {
+  return escHtml(String(value || '')).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function validFavoriteUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+  } catch (e) { return ''; }
+}
+
+function favoriteStatusText(status) {
+  return ({ planned: '想看', watching: '进行中', completed: '已完成', paused: '暂停', dropped: '搁置' })[status] || status || '';
+}
+
+function renderFavorites() {
+  ['anime', 'manga'].forEach(type => {
+    const categoryBox = document.getElementById('favorite-' + type + '-categories');
+    const grid = document.getElementById('favorite-' + type + '-grid');
+    if (!categoryBox || !grid) return;
+    const categories = favoriteCategories.filter(c => c.media_type === type);
+    if (activeFavoriteCategory[type] && !categories.some(c => String(c.id) === String(activeFavoriteCategory[type]))) activeFavoriteCategory[type] = null;
+    categoryBox.innerHTML = `<span class="favorite-category-wrap"><button class="favorite-category${!activeFavoriteCategory[type] ? ' active' : ''}" data-favorite-type="${type}" data-category-id="">全部</button></span>` + categories.map(c =>
+      `<span class="favorite-category-wrap"><button class="favorite-category${String(activeFavoriteCategory[type]) === String(c.id) ? ' active' : ''}" data-favorite-type="${type}" data-category-id="${c.id}">${escHtml(c.name)}</button>${isOwner ? `<button class="favorite-category-action" data-category-action="rename" data-category-id="${c.id}" title="重命名">✎</button><button class="favorite-category-action" data-category-action="delete" data-category-id="${c.id}" title="删除">×</button>` : ''}</span>`
+    ).join('');
+    categoryBox.querySelectorAll('.favorite-category').forEach(button => button.addEventListener('click', () => {
+      activeFavoriteCategory[type] = button.dataset.categoryId || null;
+      renderFavorites();
+    }));
+    categoryBox.querySelectorAll('[data-category-action]').forEach(button => button.addEventListener('click', async () => {
+      const category = favoriteCategories.find(c => String(c.id) === String(button.dataset.categoryId));
+      if (!category) return;
+      try {
+        if (button.dataset.categoryAction === 'rename') {
+          const name = prompt('分类名称', category.name);
+          if (!name || !name.trim() || name.trim() === category.name) return;
+          await _fetch('PATCH', 'favorite_categories', { id: 'eq.' + category.id }, { name: name.trim() });
+        } else {
+          if (!confirm(`删除分类「${category.name}」？其中的记录会变为未分类。`)) return;
+          await _fetch('DELETE', 'favorite_categories', { id: 'eq.' + category.id });
+          if (String(activeFavoriteCategory[type]) === String(category.id)) activeFavoriteCategory[type] = null;
+        }
+        await loadFavorites();
+        renderFavorites();
+      } catch (error) { toast('⚠️ 分类操作失败，名称可能已存在'); }
+    }));
+
+    const items = favoriteItems.filter(item => item.media_type === type && (!activeFavoriteCategory[type] || String(item.category_id) === String(activeFavoriteCategory[type])));
+    if (!items.length) {
+      grid.innerHTML = `<p class="favorite-empty">${categories.length ? '这个分类还没有记录。' : '站主可以先新增分类，再添加记录。'}</p>`;
+      return;
+    }
+    grid.innerHTML = items.map(item => {
+      const cover = validFavoriteUrl(item.cover_url);
+      const category = favoriteCategories.find(c => String(c.id) === String(item.category_id));
+      const meta = [category?.name, favoriteStatusText(item.status), item.rating != null ? `${item.rating} 分` : ''].filter(Boolean).join(' · ');
+      return `<article class="favorite-card" data-favorite-detail="${item.id}" tabindex="0" role="button" title="查看记录详情">
+        ${cover ? `<img class="favorite-cover" src="${favAttr(cover)}" alt="${favAttr(item.title)}" loading="lazy">` : '<div class="favorite-empty-cover">✦</div>'}
+        <div class="favorite-info"><div class="favorite-title">${escHtml(item.title)}</div><div class="favorite-meta">${escHtml(meta || '未分类')}</div></div>
+        ${isOwner ? `<button class="favorite-delete" data-favorite-delete="${item.id}" title="删除">✕</button>` : ''}
+      </article>`;
+    }).join('');
+    grid.querySelectorAll('[data-favorite-detail]').forEach(card => {
+      const open = () => showFavoriteDetail(favoriteItems.find(item => String(item.id) === String(card.dataset.favoriteDetail)));
+      card.addEventListener('click', open);
+      card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } });
+    });
+    grid.querySelectorAll('[data-favorite-delete]').forEach(button => button.addEventListener('click', async event => {
+      event.stopPropagation();
+      if (!confirm('删除这条记录？')) return;
+      await _fetch('DELETE', 'favorites', { id: 'eq.' + button.dataset.favoriteDelete });
+      await loadFavorites();
+      renderFavorites();
+    }));
+  });
+}
+
+function showFavoriteDetail(item) {
+  if (!item) return;
+  const category = favoriteCategories.find(c => String(c.id) === String(item.category_id));
+  const cover = validFavoriteUrl(item.cover_url);
+  const details = [
+    ['分类', category?.name || '未分类'],
+    ['年份', item.release_year || '未填写'],
+    ['状态', favoriteStatusText(item.status)],
+    ['进度', item.progress ? String(item.progress) : '未填写'],
+    ['评分', item.rating != null ? `${item.rating} / 10` : '未评分']
+  ];
+  document.getElementById('favorite-detail-title').textContent = item.media_type === 'anime' ? '动画记录' : '漫画记录';
+  document.getElementById('favorite-detail-content').innerHTML = `<div class="favorite-detail-layout">
+    ${cover ? `<img class="favorite-detail-cover" src="${favAttr(cover)}" alt="${favAttr(item.title)}">` : '<div class="favorite-empty-cover">✦</div>'}
+    <div><h4 class="favorite-detail-title">${escHtml(item.title)}</h4>${item.title_native && item.title_native !== item.title ? `<p class="favorite-detail-native">${escHtml(item.title_native)}</p>` : ''}
+      <div class="favorite-detail-meta">${details.map(([label, value]) => `<div><span>${label}</span>${escHtml(value)}</div>`).join('')}</div>
+      <p class="favorite-detail-note">${escHtml(item.note || '暂未留下短评。')}</p>
+    </div>
+  </div>`;
+  document.getElementById('favorite-detail-overlay').classList.add('show');
+}
+
+function closeFavoriteDetail() {
+  document.getElementById('favorite-detail-overlay').classList.remove('show');
+}
+
+function populateFavoriteCategorySelect(type, selectedId = '') {
+  const select = document.getElementById('favorite-category');
+  const categories = favoriteCategories.filter(c => c.media_type === type);
+  select.innerHTML = categories.length
+    ? categories.map(c => `<option value="${c.id}"${String(c.id) === String(selectedId) ? ' selected' : ''}>${escHtml(c.name)}</option>`).join('')
+    : '<option value="">请先新增分类</option>';
+}
+
+function openFavoriteModal(type = 'anime') {
+  if (!isOwner) return;
+  selectedFavoriteSource = { source: 'manual', sourceId: null };
+  favoriteSearchResults = [];
+  document.getElementById('favorite-type').value = type;
+  document.getElementById('favorite-search').value = '';
+  document.getElementById('favorite-results').innerHTML = '';
+  document.getElementById('favorite-title').value = '';
+  document.getElementById('favorite-title-native').value = '';
+  document.getElementById('favorite-year').value = '';
+  document.getElementById('favorite-cover-url').value = '';
+  document.getElementById('favorite-status').value = 'planned';
+  document.getElementById('favorite-progress').value = '0';
+  document.getElementById('favorite-rating').value = '';
+  document.getElementById('favorite-note').value = '';
+  populateFavoriteCategorySelect(type, activeFavoriteCategory[type] || '');
+  document.getElementById('favorite-overlay').classList.add('show');
+  document.getElementById('favorite-search').focus();
+}
+
+function closeFavoriteModal() {
+  document.getElementById('favorite-overlay').classList.remove('show');
+}
+
+async function searchBangumi(search, type) {
+  const response = await fetch('https://api.bgm.tv/v0/search/subjects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keyword: search, filter: { type: [type === 'anime' ? 2 : 1] } })
+  });
+  if (!response.ok) throw new Error('Bangumi 搜索不可用');
+  const data = await response.json();
+  return (data.data || []).slice(0, 12).map(item => ({
+    title: item.name_cn || item.name || '未命名',
+    titleNative: item.name || '',
+    cover: item.images?.large || item.images?.common || '',
+    year: Number(String(item.date || '').slice(0, 4)) || '',
+    source: 'manual',
+    sourceId: 'bgm:' + item.id
+  }));
+}
+
+async function searchAniList(search, type) {
+  const query = `query ($search: String, $type: MediaType) { Page(page: 1, perPage: 12) { media(search: $search, type: $type, sort: SEARCH_MATCH) { id title { romaji native english } coverImage { extraLarge large } startDate { year } } } }`;
+  const response = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ query, variables: { search, type: type === 'anime' ? 'ANIME' : 'MANGA' } })
+  });
+  if (!response.ok) throw new Error('AniList 搜索不可用');
+  const data = await response.json();
+  return (data?.data?.Page?.media || []).map(item => ({
+    title: item.title.native || item.title.romaji || item.title.english || '未命名',
+    titleNative: item.title.native || '',
+    cover: item.coverImage?.extraLarge || item.coverImage?.large || '',
+    year: item.startDate?.year || '',
+    source: 'anilist',
+    sourceId: String(item.id)
+  }));
+}
+
+function renderFavoriteSearchResults() {
+  const resultBox = document.getElementById('favorite-results');
+  if (!favoriteSearchResults.length) { resultBox.innerHTML = '<p class="favorite-empty">没有匹配结果，可以手动填写。</p>'; return; }
+  resultBox.innerHTML = favoriteSearchResults.map((item, index) => {
+    const cover = validFavoriteUrl(item.cover);
+    return `<button class="favorite-result" data-favorite-result="${index}">${cover ? `<img src="${favAttr(cover)}" alt="">` : ''}<span>${escHtml(item.title)}</span></button>`;
+  }).join('');
+  resultBox.querySelectorAll('[data-favorite-result]').forEach(button => button.addEventListener('click', () => selectFavoriteResult(favoriteSearchResults[Number(button.dataset.favoriteResult)])));
+}
+
+async function searchFavoriteMedia() {
+  const search = document.getElementById('favorite-search').value.trim();
+  const type = document.getElementById('favorite-type').value;
+  const resultBox = document.getElementById('favorite-results');
+  if (!search) return;
+  resultBox.innerHTML = '<p class="favorite-empty">正在搜索...</p>';
+  try {
+    favoriteSearchResults = await searchBangumi(search, type);
+  } catch (error) {
+    try { favoriteSearchResults = await searchAniList(search, type); }
+    catch (fallbackError) { resultBox.innerHTML = '<p class="favorite-empty">搜索服务暂时不可用，可以手动填写。</p>'; return; }
+  }
+  if (!favoriteSearchResults.length) {
+    try { favoriteSearchResults = await searchAniList(search, type); } catch (error) {}
+  }
+  renderFavoriteSearchResults();
+}
+
+function selectFavoriteResult(item) {
+  if (!item) return;
+  document.getElementById('favorite-title').value = item.title;
+  document.getElementById('favorite-title-native').value = item.titleNative;
+  document.getElementById('favorite-year').value = item.year;
+  document.getElementById('favorite-cover-url').value = validFavoriteUrl(item.cover);
+  selectedFavoriteSource = { source: item.source, sourceId: item.sourceId };
+  document.getElementById('favorite-results').innerHTML = '';
+}
+
+document.getElementById('favorite-add-btn').addEventListener('click', () => openFavoriteModal('anime'));
+document.querySelectorAll('.favorite-category-add').forEach(button => button.addEventListener('click', async () => {
+  const type = button.dataset.mediaType;
+  const name = prompt(type === 'anime' ? '动画分类名称' : '漫画分类名称');
+  if (!name || !name.trim()) return;
+  try {
+    const order = favoriteCategories.filter(c => c.media_type === type).length;
+    await _fetch('POST', 'favorite_categories', null, { media_type: type, name: name.trim(), sort_order: order });
+    await loadFavorites();
+    renderFavorites();
+    toast('✅ 分类已添加');
+  } catch (error) { toast('⚠️ 分类添加失败，名称可能已存在'); }
+}));
+document.getElementById('favorite-modal-close').addEventListener('click', closeFavoriteModal);
+document.getElementById('favorite-detail-close').addEventListener('click', closeFavoriteDetail);
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && document.getElementById('favorite-detail-overlay').classList.contains('show')) closeFavoriteDetail(); });
+document.getElementById('favorite-type').addEventListener('change', event => {
+  selectedFavoriteSource = { source: 'manual', sourceId: null };
+  document.getElementById('favorite-results').innerHTML = '';
+  populateFavoriteCategorySelect(event.target.value);
+});
+document.getElementById('favorite-search-btn').addEventListener('click', searchFavoriteMedia);
+document.getElementById('favorite-search').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchFavoriteMedia(); } });
+document.getElementById('favorite-save').addEventListener('click', async () => {
+  const mediaType = document.getElementById('favorite-type').value;
+  const title = document.getElementById('favorite-title').value.trim();
+  const categoryId = document.getElementById('favorite-category').value;
+  if (!title) { toast('⚠️ 请填写名称'); return; }
+  if (!categoryId) { toast('⚠️ 请先添加并选择分类'); return; }
+  const ratingText = document.getElementById('favorite-rating').value;
+  const yearText = document.getElementById('favorite-year').value;
+  try {
+    await _fetch('POST', 'favorites', null, {
+      media_type: mediaType,
+      category_id: Number(categoryId),
+      title,
+      title_native: document.getElementById('favorite-title-native').value.trim() || null,
+      cover_url: validFavoriteUrl(document.getElementById('favorite-cover-url').value) || null,
+      source: selectedFavoriteSource.source,
+      source_id: selectedFavoriteSource.sourceId,
+      release_year: yearText ? Number(yearText) : null,
+      status: document.getElementById('favorite-status').value,
+      progress: Number(document.getElementById('favorite-progress').value) || 0,
+      rating: ratingText ? Number(ratingText) : null,
+      note: document.getElementById('favorite-note').value.trim() || null
+    });
+    closeFavoriteModal();
+    await loadFavorites();
+    activeFavoriteCategory[mediaType] = categoryId;
+    renderFavorites();
+    toast('✅ 已保存记录');
+  } catch (error) { toast('⚠️ 保存失败：' + (error.message || '请检查登录状态')); }
+});
+
+// ==========================================
 // 关于
 // ==========================================
 let aboutText = LS.get('about', '这里是我的个人介绍。\n\n点击「编辑」按钮来修改这段文字。');
@@ -1937,6 +2364,7 @@ document.getElementById('about-save').addEventListener('click', () => {
   try { await openIDB(); await loadWallpaper(); await loadPhotos(); await loadPlaylists(); await loadSongs(); } catch (e) {}
   try { await loadProjects(); } catch(e) {}
   try { await loadNotes(); } catch(e) {}
+  try { await loadFavorites(); } catch(e) {}
   await checkAuth();
   updateStats();
 })();
