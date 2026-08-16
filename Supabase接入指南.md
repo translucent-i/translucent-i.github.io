@@ -1,5 +1,10 @@
 # Supabase 接入指南 — 为个人博客添加点赞 & 评论
 
+> Important: this is an old feature guide. Do not apply its public comment or
+> public like RLS examples to the current website. The current, safer
+> read-only visitor policy is defined in `supabase-security.sql`; follow
+> `安全部署检查清单.md` for deployment.
+
 ## 一、Supabase 是什么？
 
 一句话：**免费的云端数据库 + 用户认证**。你不需要自己搭服务器，只需在前端 HTML 里引入一个 JS 库，就能读写数据库、做登录。

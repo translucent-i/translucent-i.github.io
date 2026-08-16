@@ -576,7 +576,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
     <button class="nav-btn" data-page="photos">照片墙</button>
     <button class="nav-btn" data-page="notes">随笔</button>
     <button class="nav-btn" data-page="about">关于</button>
-    <button class="nav-btn" id="auth-btn">登录</button>
+    <button class="nav-btn" id="auth-btn" style="display:none;">登录</button>
     <button class="nav-dark" id="dark-toggle" title="切换夜间模式">🌙</button>
   </div>
 </nav>
@@ -702,7 +702,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
       </div>
       <div class="player-panel playlist-comments-panel" id="playlist-comments">
         <h3 style="font-size:14px;margin-bottom:10px;">💬 歌单讨论</h3>
-        <div class="comment-input-row">
+        <div class="comment-input-row owner-only-el" style="display:none;">
           <input type="text" placeholder="说点什么..." id="pl-comment-input" maxlength="200">
           <button id="pl-comment-submit">发送</button>
         </div>
@@ -743,7 +743,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
 <!-- 随笔页面 -->
 <section class="page" id="page-notes">
   <div class="notes-grid-view" id="notes-grid-view">
-    <div class="notes-input-area">
+    <div class="notes-input-area owner-only-el" style="display:none;">
       <textarea class="notes-input" id="notes-input" rows="2" placeholder="写点什么..."></textarea>
       <button class="notes-submit" id="notes-submit">发布</button>
     </div>
@@ -792,7 +792,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
   <input type="text" id="auth-nickname" placeholder="昵称（注册时填写）" style="display:none;">
   <button id="auth-submit">登录</button>
   <p id="auth-err" style="font-size:11px;color:#e55;text-align:center;margin-top:6px;"></p>
-  <p id="auth-switch" style="font-size:12px;color:var(--text-sub);text-align:center;margin-top:8px;cursor:pointer;">没有账号？<span style="color:var(--accent);">注册</span></p>
+  <p id="auth-switch" style="display:none;font-size:12px;color:var(--text-sub);text-align:center;margin-top:8px;cursor:pointer;"></p>
 </div>
 
 <!-- 新增喜好弹窗 -->
@@ -903,6 +903,7 @@ function getVisitorId() {
 // 站主识别 + 用户认证
 // ==========================================
 const OWNER_EMAIL = '2067229357@qq.com';
+const OWNER_LOGIN_MODE = new URLSearchParams(window.location.search).get('admin') === '1';
 let currentUser = null;   // Supabase 用户对象
 let isOwner = false;      // 是不是站主
 let userProfile = null;   // { display_name, avatar_url }
@@ -934,19 +935,21 @@ async function loadProfile() {
 
 function updateAuthUI() {
   const btn = document.getElementById('auth-btn');
+  btn.style.display = (isOwner || OWNER_LOGIN_MODE) ? '' : 'none';
   if (currentUser) {
     btn.textContent = (userProfile?.display_name || '用户') + (isOwner ? ' 👑' : '');
     btn.title = '点击退出登录';
   } else {
     btn.textContent = '登录';
-    btn.title = '登录 / 注册';
+    btn.title = '站主登录';
   }
 }
 
 // 登录/注册弹窗
 const authModal = document.getElementById('auth-modal');
 const authOverlay = document.getElementById('auth-overlay');
-let authMode = 'login'; // 'login' | 'register'
+const PUBLIC_SIGNUP_ENABLED = false;
+let authMode = 'login';
 
 document.getElementById('auth-btn').addEventListener('click', () => {
   if (currentUser) { openProfileMenu(); return; }
@@ -958,15 +961,18 @@ authOverlay.addEventListener('click', closeAuth);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && authModal.classList.contains('show')) closeAuth(); });
 
 document.getElementById('auth-switch').addEventListener('click', () => {
+  if (!PUBLIC_SIGNUP_ENABLED) return;
   authMode = authMode === 'login' ? 'register' : 'login';
   updateAuthModalUI();
 });
 
 function updateAuthModalUI() {
+  if (!PUBLIC_SIGNUP_ENABLED) authMode = 'login';
   document.getElementById('auth-title').textContent = authMode === 'login' ? '登录' : '注册';
   document.getElementById('auth-submit').textContent = authMode === 'login' ? '登录' : '注册';
   document.getElementById('auth-nickname').style.display = authMode === 'register' ? '' : 'none';
-  document.getElementById('auth-switch').innerHTML = authMode === 'login'
+  document.getElementById('auth-switch').style.display = PUBLIC_SIGNUP_ENABLED ? '' : 'none';
+  if (PUBLIC_SIGNUP_ENABLED) document.getElementById('auth-switch').innerHTML = authMode === 'login'
     ? '没有账号？<span style="color:var(--accent);">注册</span>'
     : '已有账号？<span style="color:var(--accent);">登录</span>';
   document.getElementById('auth-err').textContent = '';
@@ -1081,13 +1087,20 @@ const LS = {
 
 // Supabase Storage
 async function sbUpload(bucket, path, blob) {
+  const headers = sbHeaders();
+  delete headers['Content-Type'];
+  headers['x-upsert'] = 'false';
   const r = await fetch(`${SB_URL}/storage/v1/object/${bucket}/${path}`, {
     method: 'POST',
-    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true' },
+    headers,
     body: blob
   });
   if (!r.ok) { const t = await r.text(); throw new Error(t.slice(0,80)); }
-  return `${SB_URL}/storage/v1/object/public/${bucket}/${path}`;
+  return sbPublicUrl(bucket, path);
+}
+function sbPublicUrl(bucket, path) {
+  const safePath = String(path).split('/').map(encodeURIComponent).join('/');
+  return `${SB_URL}/storage/v1/object/public/${encodeURIComponent(bucket)}/${safePath}`;
 }
 async function sbListObjects(bucket) {
   const r = await fetch(`${SB_URL}/storage/v1/object/list/${bucket}`, {
@@ -1098,15 +1111,20 @@ async function sbListObjects(bucket) {
   return await r.json();
 }
 async function sbDeleteStorage(bucket, path) {
-  const h = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+  const h = sbHeaders();
+  delete h['Content-Type'];
   await fetch(`${SB_URL}/storage/v1/object/${bucket}/${path}`, { method: 'DELETE', headers: h });
+}
+
+function storageFileName(prefix, extension) {
+  return `${prefix}_${crypto.randomUUID()}.${extension}`;
 }
 
 // 示例项目
 let projects = [];
 async function loadProjects() {
   try {
-    const data = await _fetch('GET', 'projects', { order: 'created_at.desc' });
+    const data = await _fetch('GET', 'projects', { order: 'created_at.desc', limit: '100' });
     projects = (data || []).map(p => {
       if (typeof p.tags === 'string') p.tags = p.tags ? p.tags.split(',').map(t=>t.trim()) : [];
       if (!p.desc && p["desc"]) p.desc = p["desc"];
@@ -1142,7 +1160,10 @@ function switchPage(name) {
   if (name === 'projects') { document.querySelectorAll('.owner-only-el').forEach(el => el.style.display = isOwner ? '' : 'none'); renderProjects(); }
   if (name === 'music') { renderPlaylistSelector(); renderPlaylist(); updatePlayerDisplay(); }
   if (name === 'favorites') renderFavorites();
-  if (name === 'photos') renderPhotos();
+  if (name === 'photos') {
+    if (photosLoaded) renderPhotos();
+    else loadPhotos().then(renderPhotos);
+  }
   if (name === 'notes') {
     document.getElementById('notes-grid-view').style.display = '';
     document.getElementById('notes-detail-view').style.display = 'none';
@@ -1268,12 +1289,12 @@ async function renderPanel() {
   // 清理旧缩略图 URL
   wpThumbUrls = [];
   const d2 = await sbListObjects('wallpapers');
-  wpRecords = (d2 || []).filter(f => !f.name.startsWith('.')).map(f => ({ id: f.name, name: f.name, time: new Date(f.created_at).getTime(), url: SB_URL + '/storage/v1/object/public/wallpapers/' + f.name }));
+  wpRecords = (d2 || []).filter(f => !f.name.startsWith('.')).map(f => ({ id: f.name, name: f.name, time: new Date(f.created_at).getTime(), url: sbPublicUrl('wallpapers', f.name) }));
   wpRecords.sort((a, b) => b.time - a.time);
   const activeId = LS.get('activeWpId', null);
   wpGrid.innerHTML = wpRecords.map(r => {
     const isActive = r.id === activeId;
-    return '<div class="wp-item' + (isActive ? ' active' : '') + '" data-id="' + r.id + '"><img src="' + r.url + '" alt=""><span class="wp-check">✅</span>' + (isOwner ? '<button class="wp-del" data-del="' + r.id + '">✕</button>' : '') + '</div>';
+    return '<div class="wp-item' + (isActive ? ' active' : '') + '" data-id="' + escAttr(r.id) + '"><img src="' + escAttr(r.url) + '" alt=""><span class="wp-check">✅</span>' + (isOwner ? '<button class="wp-del" data-del="' + escAttr(r.id) + '">✕</button>' : '') + '</div>';
   }).join('') || '<div style="grid-column:1/-1;font-size:12px;color:var(--text-muted);text-align:center;padding:24px;">还没有壁纸</div>';
 
   // 点击缩略图 → 应用壁纸
@@ -1310,7 +1331,7 @@ async function applyWallpaper(id) {
 async function loadWallpaper() {
   const activeId = LS.get('activeWpId', null);
   if (activeId === null) return;
-  wallpaperUrl = SB_URL + '/storage/v1/object/public/wallpapers/' + activeId;
+  wallpaperUrl = sbPublicUrl('wallpapers', activeId);
   document.body.style.backgroundImage = 'url(' + wallpaperUrl + ')';
   document.body.classList.add('has-wallpaper');
 }
@@ -1335,7 +1356,7 @@ wpUpload.addEventListener('change', async e => {
     if (!f.type.startsWith('image/')) continue;
     try {
       const blob = await compressBlob(f);
-      const path = 'wp_' + Date.now() + '.jpg';
+      const path = storageFileName('wp', 'jpg');
       await sbUpload('wallpapers', path, blob);
     } catch (err) { toast('⚠️ 壁纸上传失败: ' + (err.message || '请检查Supabase Storage权限')); }
   }
@@ -1485,12 +1506,27 @@ document.getElementById('project-search').addEventListener('input', e => {
   const q = e.target.value.toLowerCase();
   _renderProjectGrid(projects.filter(p => p.title.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q) || (p.tags||[]).some(t=>t.toLowerCase().includes(q))));
 });
+function safeMarkdownHref(rawHref) {
+  try {
+    const href = rawHref.replace(/&amp;/g, '&');
+    const url = new URL(href, window.location.origin);
+    return ['http:', 'https:', 'mailto:'].includes(url.protocol) ? url.href : '';
+  } catch (_) {
+    return '';
+  }
+}
+function escAttr(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 function md2html(md) {
   return md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>')
     .replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>')
     .replace(/`([^`]+)`/g,'<code>$1</code>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, rawHref) => {
+      const href = safeMarkdownHref(rawHref);
+      return href ? '<a href="' + escAttr(href) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>' : label;
+    })
     .replace(/^- (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>')
     .replace(/\n/g,'<br>');
 }
@@ -1513,11 +1549,11 @@ function setPlayIcon(p) { playIcon.src = p ? PAUSE_ICON_SRC : PLAY_ICON_SRC; }
 
 async function loadPlaylists() {
   try {
-    const data = await _fetch('GET', 'playlists', { order: 'created_at.asc' });
+    const data = await _fetch('GET', 'playlists', { order: 'created_at.asc', limit: '50' });
     playlists = (data && data.length) ? data : [];
     if (!playlists.length) {
       await _fetch('POST', 'playlists', null, { name: '我的歌单', created_at: new Date().toISOString() });
-      const d2 = await _fetch('GET', 'playlists', { order: 'created_at.asc' });
+      const d2 = await _fetch('GET', 'playlists', { order: 'created_at.asc', limit: '50' });
       playlists = d2 || [];
     } else { playlists = data; }
   } catch(e) { playlists = [{ id: 1, name: '我的歌单' }]; }
@@ -1535,10 +1571,10 @@ async function loadSongs() {
   songUrls.forEach(u => URL.revokeObjectURL(u));
   songs = []; songUrls = [];
   try {
-    const data = await _fetch('GET', 'songs', { playlist_id: 'eq.' + currentPlaylistId, order: 'created_at.asc' });
+    const data = await _fetch('GET', 'songs', { playlist_id: 'eq.' + currentPlaylistId, order: 'created_at.asc', limit: '200' });
     songs = data || [];
     for (const s of songs) {
-      const url = SB_URL + '/storage/v1/object/public/songs/' + s.file_path;
+      const url = sbPublicUrl('songs', s.file_path);
       songUrls.push(url);
     }
   } catch(e) {}
@@ -1595,7 +1631,7 @@ async function loadPlaylistComments() {
   const list = document.getElementById('pl-comment-list');
   if (!list) return;
   try {
-    const data = await _fetch('GET', 'comments', { note_id: 'eq.pl_' + currentPlaylistId, order: 'created_at.asc' });
+    const data = await _fetch('GET', 'comments', { note_id: 'eq.pl_' + currentPlaylistId, order: 'created_at.asc', limit: '60' });
     const myName = userProfile?.display_name || '匿名';
     list.innerHTML = (data || []).map(c => {
       const canDel = isOwner || (currentUser && c.author === myName);
@@ -1790,7 +1826,7 @@ document.getElementById('playlist-del').addEventListener('click', async () => {
 });
 
 // MP3上传（带歌单ID）
-document.getElementById('song-upload-input').addEventListener('change',async e=>{const files=Array.from(e.target.files);let c=0,errs=0;for(const f of files){if(!f.name.toLowerCase().endsWith('.mp3')&&f.type!=='audio/mp3'&&f.type!=='audio/mpeg')continue;try{const path='pl_'+currentPlaylistId+'_'+Date.now()+'.mp3';await sbUpload('songs',path,f);await _fetch('POST','songs',null,{playlist_id:currentPlaylistId,name:f.name.replace(/\.mp3$/i,''),file_path:path,created_at:new Date().toISOString()});c++;}catch(err){errs++;toast('⚠️ 歌曲上传失败: '+(err.message||''));}} e.target.value='';await loadSongs();renderPlaylist();if(c)toast('✅ 已添加 '+c+' 首歌曲');});
+document.getElementById('song-upload-input').addEventListener('change',async e=>{const files=Array.from(e.target.files);let c=0,errs=0;for(const f of files){if(!f.name.toLowerCase().endsWith('.mp3')&&f.type!=='audio/mp3'&&f.type!=='audio/mpeg')continue;try{const path=storageFileName('pl_'+currentPlaylistId,'mp3');await sbUpload('songs',path,f);await _fetch('POST','songs',null,{playlist_id:currentPlaylistId,name:f.name.replace(/\.mp3$/i,''),file_path:path,created_at:new Date().toISOString()});c++;}catch(err){errs++;toast('⚠️ 歌曲上传失败: '+(err.message||''));}} e.target.value='';await loadSongs();renderPlaylist();if(c)toast('✅ 已添加 '+c+' 首歌曲');});
 
 // ---- 网易云 ID 添加歌曲 ----
 
@@ -1799,6 +1835,7 @@ document.getElementById('song-upload-input').addEventListener('change',async e=>
 // ==========================================
 let photoRecords = [];     // [{id, blob, time}]
 let photoUrls = [];        // 对应的 object URLs
+let photosLoaded = false;
 
 async function loadPhotos() {
   photoRecords = []; photoUrls = [];
@@ -1806,7 +1843,8 @@ async function loadPhotos() {
     const data = await sbListObjects('photos');
     photoRecords = (data || []).filter(f => !f.name.startsWith('.')).map(f => ({ id: f.id, name: f.name, time: new Date(f.created_at).getTime() }));
     photoRecords.sort((a,b) => b.time - a.time);
-    photoUrls = photoRecords.map(f => SB_URL + '/storage/v1/object/public/photos/' + f.name);
+    photoUrls = photoRecords.map(f => sbPublicUrl('photos', f.name));
+    photosLoaded = true;
   } catch(e) {}
 }
 let ctxTargetIdx = null;
@@ -1862,8 +1900,8 @@ document.getElementById('photo-input').addEventListener('change', async e => {
   for (const f of files) {
     if (!f.type.startsWith('image/')) continue;
     try {
-      const path = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '.jpg';
-      await sbUpload('photos', path, f);
+      const path = storageFileName('img', 'jpg');
+      await sbUpload('photos', path, await compressBlob(f));
     } catch (err) { toast('⚠️ 照片上传失败'); }
   }
   e.target.value = '';
@@ -1881,7 +1919,7 @@ let notes = [];
 
 async function loadNotes() {
   try {
-    const data = await _fetch('GET', 'notes', { order: 'created_at.desc' });
+    const data = await _fetch('GET', 'notes', { order: 'created_at.desc', limit: '30' });
     notes = data || [];
   } catch(e) { notes = []; }
 }
@@ -1902,10 +1940,10 @@ async function renderNotes() {
     const n = notes[i];
     const noteId = String(n.id);
     const preview = n.content.length > 100 ? n.content.slice(0, 100) + '...' : n.content;
-    const [{ count: likeCount }, likedData] = await Promise.all([
-      _cnt('likes', { note_id: 'eq.' + noteId }),
-      _fetch('GET', 'likes', { note_id: 'eq.' + noteId, user_id: 'eq.' + visitorId, limit: '1' }),
-    ]);
+    const [likeSummary, likedData] = isOwner
+      ? await Promise.all([_cnt('likes', { note_id: 'eq.' + noteId }), _fetch('GET', 'likes', { note_id: 'eq.' + noteId, user_id: 'eq.' + visitorId, limit: '1' })])
+      : [{ count: 0 }, []];
+    const likeCount = likeSummary.count;
     const liked = !!(likedData && likedData.length);
     html += `
     <div class="note-card" data-note-id="${noteId}" data-idx="${i}">
@@ -1913,7 +1951,7 @@ async function renderNotes() {
       <div class="note-card-footer">
         <span>${escHtml(n.author||'匿名')} · ${fmtTime(n.created_at||n.time)}</span>
         <span class="note-card-social">
-          <span class="like-btn${liked?' liked':''}" data-note="${noteId}">${liked?'❤️':'🤍'} ${likeCount||0}</span>
+          ${isOwner ? `<span class="like-btn${liked?' liked':''}" data-note="${noteId}">${liked?'❤️':'🤍'} ${likeCount||0}</span>` : `<span>❤️ ${likeCount||0}</span>`}
           <span>💬</span>
         </span>
       </div>
@@ -1951,10 +1989,10 @@ async function showNoteDetail(noteId, idx) {
 
   const n = notes[idx];
   const visitorId = getVisitorId();
-  const [{ count: likeCount }, likedData2] = await Promise.all([
-    _cnt('likes', { note_id: 'eq.' + noteId }),
-    _fetch('GET', 'likes', { note_id: 'eq.' + noteId, user_id: 'eq.' + visitorId, limit: '1' }),
-  ]);
+  const [likeSummary, likedData2] = isOwner
+    ? await Promise.all([_cnt('likes', { note_id: 'eq.' + noteId }), _fetch('GET', 'likes', { note_id: 'eq.' + noteId, user_id: 'eq.' + visitorId, limit: '1' })])
+    : [{ count: 0 }, []];
+  const likeCount = likeSummary.count;
   const liked = !!(likedData2 && likedData2.length);
 
   const delBack = "document.getElementById('notes-back').click()";
@@ -1962,7 +2000,7 @@ async function showNoteDetail(noteId, idx) {
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
       '<span style="font-size:12px;color:var(--text-muted);">' + escHtml(n.author||'匿名') + ' · ' + fmtTime(n.created_at||n.time) + '</span>' +
       '<span style="display:flex;gap:6px;">' +
-        '<button class="like-btn' + (liked ? ' liked' : '') + '" id="detail-like-btn">' + (liked ? '❤️' : '🤍') + ' <span>' + (likeCount || 0) + '</span></button>' +
+        (isOwner ? '<button class="like-btn' + (liked ? ' liked' : '') + '" id="detail-like-btn">' + (liked ? '❤️' : '🤍') + ' <span>' + (likeCount || 0) + '</span></button>' : '<span style="font-size:12px;color:var(--text-muted);padding:4px 6px;">❤️ ' + (likeCount || 0) + '</span>') +
         (isOwner ? '<button onclick="editNote(' + idx + ')" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;">编辑</button><button onclick="deleteNote(' + idx + ');' + delBack + ';" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;">删除</button>' : '') +
       '</span>' +
     '</div>' +
@@ -1973,7 +2011,8 @@ async function showNoteDetail(noteId, idx) {
     '</div>';
 
   // 点赞
-  document.getElementById('detail-like-btn').addEventListener('click', async function() {
+  const detailLikeButton = document.getElementById('detail-like-btn');
+  if (detailLikeButton) detailLikeButton.addEventListener('click', async function() {
     const lrd = await _fetch('GET', 'likes', { note_id: 'eq.' + noteId, user_id: 'eq.' + visitorId, limit: '1' });
     if (lrd && lrd.length) { await _fetch('DELETE', 'likes', { note_id: 'eq.' + noteId, user_id: 'eq.' + visitorId }); }
     else { await _fetch('POST', 'likes', null, { note_id: noteId, user_id: visitorId }); }
@@ -1985,13 +2024,11 @@ async function showNoteDetail(noteId, idx) {
   commentArea.innerHTML = `
     <h3>💬 评论</h3>
     <div id="detail-comment-list"></div>
-    <div class="comment-input-row">
-      <input type="text" placeholder="写评论..." id="detail-comment-input" maxlength="200">
-      <button id="detail-comment-submit">发送</button>
-    </div>
+    ${isOwner ? '<div class="comment-input-row"><input type="text" placeholder="写评论..." id="detail-comment-input" maxlength="200"><button id="detail-comment-submit">发送</button></div>' : ''}
   `;
   await loadDetailComments(noteId);
-  document.getElementById('detail-comment-submit').addEventListener('click', async () => {
+  const detailCommentSubmit = document.getElementById('detail-comment-submit');
+  if (detailCommentSubmit) detailCommentSubmit.addEventListener('click', async () => {
     const input = document.getElementById('detail-comment-input');
     const content = input.value.trim();
     if (!content) return;
@@ -2004,7 +2041,7 @@ async function showNoteDetail(noteId, idx) {
 async function loadDetailComments(noteId) {
   const el = document.getElementById('detail-comment-list');
   if (!el) return;
-  const data = await _fetch('GET', 'comments', { note_id: 'eq.' + noteId, order: 'created_at.asc' });
+  const data = await _fetch('GET', 'comments', { note_id: 'eq.' + noteId, order: 'created_at.asc', limit: '60' });
   el.innerHTML = (data || []).map(c => `
     <div class="comment-item">
       <div class="comment-body">
@@ -2068,8 +2105,8 @@ let selectedFavoriteSource = { source: 'manual', sourceId: null };
 
 async function loadFavorites() {
   const [categories, items] = await Promise.all([
-    _fetch('GET', 'favorite_categories', { order: 'media_type.asc,sort_order.asc,name.asc' }),
-    _fetch('GET', 'favorites', { order: 'created_at.desc' })
+    _fetch('GET', 'favorite_categories', { order: 'media_type.asc,sort_order.asc,name.asc', limit: '100' }),
+    _fetch('GET', 'favorites', { order: 'created_at.desc', limit: '240' })
   ]);
   favoriteCategories = categories || [];
   favoriteItems = items || [];
@@ -2361,7 +2398,7 @@ document.getElementById('about-save').addEventListener('click', () => {
 // 初始化（异步）
 // ==========================================
 (async function init() {
-  try { await openIDB(); await loadWallpaper(); await loadPhotos(); await loadPlaylists(); await loadSongs(); } catch (e) {}
+  try { await openIDB(); await loadWallpaper(); await loadPlaylists(); await loadSongs(); } catch (e) {}
   try { await loadProjects(); } catch(e) {}
   try { await loadNotes(); } catch(e) {}
   try { await loadFavorites(); } catch(e) {}
