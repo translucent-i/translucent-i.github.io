@@ -420,7 +420,7 @@ body.dark .mode-icon { filter:invert(1); }
 .favorites-toolbar p { font-size:12px;color:var(--text-muted); }
 .favorite-add-btn { padding:9px 13px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text-sub);font-family:inherit;font-size:12px;cursor:pointer;white-space:nowrap; }
 .favorite-add-btn:hover { color:var(--accent);border-color:var(--accent); }
-.favorites-columns { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px; }
+.favorites-columns { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px; }
 .favorite-section { min-width:0;background:var(--surface);backdrop-filter:var(--blur-card);-webkit-backdrop-filter:var(--blur-card);border:2px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow); }
 .favorite-section-head { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px; }
 .favorite-section-head h3 { font-size:16px; }
@@ -742,7 +742,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
 <!-- 喜好页面 -->
 <section class="page" id="page-favorites">
   <div class="favorites-toolbar">
-    <div><h2>喜好</h2><p>记录看过的动画和漫画。</p></div>
+    <div><h2>喜好</h2><p>记录看过的动画、漫画和轻小说。</p></div>
     <button class="favorite-add-btn owner-only-el" id="favorite-add-btn" style="display:none;">＋ 新增记录</button>
   </div>
   <div class="favorites-columns">
@@ -755,6 +755,11 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
       <div class="favorite-section-head"><h3>喜欢的漫画</h3><button class="favorite-category-add owner-only-el" data-media-type="manga" style="display:none;">＋ 分类</button></div>
       <div class="favorite-categories" id="favorite-manga-categories"></div>
       <div class="favorite-scroll"><div class="favorite-grid" id="favorite-manga-grid"></div></div>
+    </section>
+    <section class="favorite-section" data-media-type="light_novel">
+      <div class="favorite-section-head"><h3>喜欢的轻小说</h3><button class="favorite-category-add owner-only-el" data-media-type="light_novel" style="display:none;">＋ 分类</button></div>
+      <div class="favorite-categories" id="favorite-light_novel-categories"></div>
+      <div class="favorite-scroll"><div class="favorite-grid" id="favorite-light_novel-grid"></div></div>
     </section>
   </div>
 </section>
@@ -827,7 +832,7 @@ body.dark .toast-msg { background:#eee;color:#1a1a2e; }
   <div class="favorite-modal" role="dialog" aria-modal="true" aria-labelledby="favorite-modal-title">
     <div class="favorite-modal-head"><h3 id="favorite-modal-title">新增喜好</h3><button class="favorite-modal-close" id="favorite-modal-close" title="关闭">✕</button></div>
     <div class="favorite-fields">
-      <label>类型<select id="favorite-type"><option value="anime">动画</option><option value="manga">漫画</option></select></label>
+      <label>类型<select id="favorite-type"><option value="anime">动画</option><option value="manga">漫画</option><option value="light_novel">轻小说</option></select></label>
       <label>分类<select id="favorite-category"></select></label>
     </div>
     <div class="favorite-search-row"><input id="favorite-search" placeholder="支持中文、日文、英文名称"><button id="favorite-search-btn">搜索</button></div>
@@ -1445,7 +1450,7 @@ function renderHomeOverview() {
   }), '还没有随笔。');
   renderList('home-recent-favorites', favoriteItems.slice(0, 3).map(item => {
     const category = favoriteCategories.find(c => String(c.id) === String(item.category_id));
-    const meta = [category?.name || (item.media_type === 'anime' ? '动画' : '漫画'), item.rating != null ? `${item.rating} / 10` : favoriteStatusText(item.status)].filter(Boolean).join(' · ');
+    const meta = [category?.name || favoriteTypeLabel(item.media_type), item.rating != null ? `${item.rating} / 10` : favoriteStatusText(item.status)].filter(Boolean).join(' · ');
     return `<button class="home-overview-item" data-home-page="favorites"><span class="home-overview-title">${escHtml(item.title)}</span><span class="home-overview-meta">${escHtml(meta)}</span></button>`;
   }), '还没有喜好记录。');
   renderList('home-recent-projects', projects.slice(0, 3).map(project => {
@@ -2149,7 +2154,7 @@ async function deleteNote(i) {
 // ==========================================
 let favoriteCategories = [];
 let favoriteItems = [];
-let activeFavoriteCategory = { anime: null, manga: null };
+let activeFavoriteCategory = { anime: null, manga: null, light_novel: null };
 let favoriteSearchResults = [];
 let selectedFavoriteSource = { source: 'manual', sourceId: null };
 
@@ -2177,8 +2182,12 @@ function favoriteStatusText(status) {
   return ({ planned: '想看', watching: '进行中', completed: '已完成', paused: '暂停', dropped: '搁置' })[status] || status || '';
 }
 
+function favoriteTypeLabel(type) {
+  return ({ anime: '动画', manga: '漫画', light_novel: '轻小说' })[type] || '喜好';
+}
+
 function renderFavorites() {
-  ['anime', 'manga'].forEach(type => {
+  ['anime', 'manga', 'light_novel'].forEach(type => {
     const categoryBox = document.getElementById('favorite-' + type + '-categories');
     const grid = document.getElementById('favorite-' + type + '-grid');
     if (!categoryBox || !grid) return;
@@ -2250,7 +2259,7 @@ function showFavoriteDetail(item) {
     ['进度', item.progress ? String(item.progress) : '未填写'],
     ['评分', item.rating != null ? `${item.rating} / 10` : '未评分']
   ];
-  document.getElementById('favorite-detail-title').textContent = item.media_type === 'anime' ? '动画记录' : '漫画记录';
+  document.getElementById('favorite-detail-title').textContent = favoriteTypeLabel(item.media_type) + '记录';
   document.getElementById('favorite-detail-content').innerHTML = `<div class="favorite-detail-layout">
     ${cover ? `<img class="favorite-detail-cover" src="${favAttr(cover)}" alt="${favAttr(item.title)}">` : '<div class="favorite-empty-cover">✦</div>'}
     <div><h4 class="favorite-detail-title">${escHtml(item.title)}</h4>${item.title_native && item.title_native !== item.title ? `<p class="favorite-detail-native">${escHtml(item.title_native)}</p>` : ''}
@@ -2375,7 +2384,7 @@ function selectFavoriteResult(item) {
 document.getElementById('favorite-add-btn').addEventListener('click', () => openFavoriteModal('anime'));
 document.querySelectorAll('.favorite-category-add').forEach(button => button.addEventListener('click', async () => {
   const type = button.dataset.mediaType;
-  const name = prompt(type === 'anime' ? '动画分类名称' : '漫画分类名称');
+  const name = prompt(favoriteTypeLabel(type) + '分类名称');
   if (!name || !name.trim()) return;
   try {
     const order = favoriteCategories.filter(c => c.media_type === type).length;
@@ -2383,7 +2392,7 @@ document.querySelectorAll('.favorite-category-add').forEach(button => button.add
     await loadFavorites();
     renderFavorites();
     toast('✅ 分类已添加');
-  } catch (error) { toast('⚠️ 分类添加失败，名称可能已存在'); }
+  } catch (error) { toast('⚠️ 分类添加失败：同一类型内不能使用重复分类名'); }
 }));
 document.getElementById('favorite-modal-close').addEventListener('click', closeFavoriteModal);
 document.getElementById('favorite-detail-close').addEventListener('click', closeFavoriteDetail);
