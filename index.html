@@ -2392,7 +2392,16 @@ document.querySelectorAll('.favorite-category-add').forEach(button => button.add
     await loadFavorites();
     renderFavorites();
     toast('✅ 分类已添加');
-  } catch (error) { toast('⚠️ 分类添加失败：同一类型内不能使用重复分类名'); }
+  } catch (error) {
+    const message = error.message || '';
+    if (message.includes('duplicate key') || message.includes('favorite_categories_media_type_name_key')) {
+      toast('⚠️ 分类添加失败：同一类型内不能使用重复分类名');
+    } else if (type === 'light_novel' && (message.includes('check constraint') || message.includes('media_type'))) {
+      toast('⚠️ 数据库尚未启用轻小说，请先执行轻小说 SQL');
+    } else {
+      toast('⚠️ 分类添加失败：' + (message || '请检查 Supabase 权限设置'));
+    }
+  }
 }));
 document.getElementById('favorite-modal-close').addEventListener('click', closeFavoriteModal);
 document.getElementById('favorite-detail-close').addEventListener('click', closeFavoriteDetail);
